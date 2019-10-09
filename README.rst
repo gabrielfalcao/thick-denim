@@ -7,6 +7,18 @@ Thick-Denim ``0.1.0``
 
 
 
+Etymology
+---------
+
+JIRA in spanish `means <https://en.wiktionary.org/wiki/jira#Noun>`_ *"large piece torn from a fabric."*
+
+The project goal is to calculate work from JIRA + GITHUB, so we could say it's our "work fabric".
+
+Denim was invented by Levi Strauss as a sturdy fabric to build clothes
+for workers. Construction workers used think jeans to protect their
+skin.
+
+That's why we got "Thick-Denim".
 
 
 How to contribute:
