@@ -2,7 +2,7 @@ from thick_denim.networking.github import GithubClient
 from tests.harnesses import stub_config_with_github_token
 from tests.functional.harnesses import vcr_for_domain
 
-# from tests.functional.harnesses import dump_json
+from tests.functional.harnesses import dump_json
 
 
 vcr = vcr_for_domain("github", record_mode="new_episodes")
@@ -10,7 +10,7 @@ vcr = vcr_for_domain("github", record_mode="new_episodes")
 
 def stubbed_github_client(repository_name):
     config = stub_config_with_github_token(
-        token="REDACTED - please use yours"  # get one here https://github.com/settings/tokens
+        token="CHANGE_ME"
     )
     client = GithubClient(config, repository_name, owner_name="NewStore")
     return client
@@ -24,10 +24,11 @@ def test_github_get_pull_requests():
     client = stubbed_github_client(repository_name="newstore")
 
     # When I  get all pull-requests
-    all_pull_requests = client.list_pull_requests("open", max_pages=-1)
+    open_prs = client.list_pull_requests("open", max_pages=1)
+    closed_prs = client.list_pull_requests("closed", max_pages=1)
 
-    # Then it should have returned issues
-    all_pull_requests.should.have.length_of(90)
+    dump_json('github-some-open-prs.json', open_prs.to_dict())
+    dump_json('github-some-closed-prs.json', closed_prs.to_dict())
 
 
 @vcr.use_cassette
@@ -50,6 +51,7 @@ def test_github_get_comments_from_pr():
     comments_on_buildbot_pr = client.list_comments_from_pull_request(
         database2_buildbot_pr.number, max_pages=-1
     )
+    dump_json(f'github-commands-from-pr-{database2_buildbot_pr.number}.json', comments_on_buildbot_pr.to_dict())
     comments_on_buildbot_pr.should.have.length_of(6)
 
     comments = [

@@ -57,3 +57,23 @@ class JiraProject(Model):
     @property
     def key(self):
         return self.get("key")
+
+
+class JiraIssueChangelog(Model):
+    __visible_atttributes__ = ["summary", "assignee_name", "assignee_key", "key"]
+
+    @property
+    def author(self):
+        return self.get("author") or {}
+
+    @property
+    def author_name(self):
+        return self.author.get("name")
+
+    @property
+    def created_at(self):
+        return self.get("created")
+
+    @property
+    def items(self):
+        return self.get("items")

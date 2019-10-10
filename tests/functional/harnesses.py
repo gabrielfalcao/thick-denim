@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-import io
+
 import json
 import vcr
 from pathlib import Path
 
 functional_tests_path = Path(__file__).parent
+tests_path = functional_tests_path.parent
+data_output_path = tests_path.joinpath('data-output')
 
 
 def vcr_for_domain(domain_name: str, record_mode="once"):
@@ -19,5 +21,7 @@ def vcr_for_domain(domain_name: str, record_mode="once"):
 
 
 def dump_json(filename, data, indent=4):
-    with io.open(filename, "w") as fp:
+    data_output_path.mkdir(exist_ok=True, parents=True)
+    destination = data_output_path.joinpath(filename)
+    with destination.open("w") as fp:
         json.dump(data, fp, indent=indent)

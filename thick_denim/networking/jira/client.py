@@ -8,7 +8,7 @@ import logging
 from thick_denim.errors import ThickDenimError
 from thick_denim.config import ThickDenimConfig
 from thick_denim.logs import UIReporter
-from .models import JiraIssue, JiraProject
+from .models import JiraIssue, JiraProject, JiraIssueChangelog
 
 
 ui = UIReporter("Jira Client")
@@ -94,12 +94,23 @@ class JiraClient(object):
 
         return JiraIssue.List(items)
 
+    def get_changelogs_from_issue(self, id_or_key, max_pages: int = -1):
+        # https://developer.atlassian.com/cloud/jira/platform/rest/v3/#api-rest-api-3-issue-issueIdOrKey-changelog-get
+        start = 0
+        params = {
+            "maxResults": 100,
+            "startAt": start,
+        }
+        logger.debug(f"retrieving changelog from issue {id_or_key}")
+        items = self.request_with_pages(f"/issue/{id_or_key}/changelog", f'retrieving changelog from issue {id_or_key}', max_pages=max_pages, params=params)
+        return JiraIssueChangelog.List(items)
+
     def request_with_pages(
         self, url, message: str, max_pages: int, params: dict = {}
     ):
         current_page = 1
         ui.debug(message)
-        response = self.http.get(self.api_url(url))
+        response = self.http.get(self.api_url(url), params=params)
         data = self.validated_response(url, response, message)
         next_url = data.get("nextPage")
         items = data["values"]

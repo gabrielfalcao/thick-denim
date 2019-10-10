@@ -252,5 +252,5 @@ class ModelList(list):
         columns, rows = self.get_table_colums_and_rows()
         return format_pretty_table(rows, columns)
 
-    def to_list_of_dicts(self) -> List[dict]:
+    def to_dict(self) -> List[dict]:
         return [m.to_dict() for m in self]

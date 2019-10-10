@@ -13,8 +13,8 @@ except:
     Notifier = None
 
 
-verbose_mode = bool(os.getenv("THICK_DENIM_VERBOSE"))
-debug_mode = bool(os.getenv("THICK_DENIM_DEBUG"))
+verbose_mode = bool(os.getenv("THICK_DENIM_VERBOSE")) or True
+debug_mode = bool(os.getenv("THICK_DENIM_DEBUG")) or True
 
 # set global level in root logger based on
 logger = logging.getLogger()

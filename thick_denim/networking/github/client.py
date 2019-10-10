@@ -69,7 +69,7 @@ class GithubClient(UserFriendlyObject):
 
         full_name = f"{self.owner_name}/{self.repository_name}"
         raise GithubClientException(
-            url, data, status, "{message} ({full_name})"
+            url, data, status, f"{message} ({full_name})"
         )
 
     def api_url(self, path: str):
@@ -148,6 +148,7 @@ class GithubClient(UserFriendlyObject):
         next_url = self.get_next_restful_url(response, params)
 
         current_page = 1
+        import ipdb;ipdb.set_trace()
         items = self.validated_response(url, response, message)
         ui.debug(message)
         should_request_next_page = (
