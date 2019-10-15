@@ -118,10 +118,14 @@ def transfer_epics_and_subtasks_to_another_project(
 ):
     epics = JiraIssue.List(list(TASKS_BY_EPIC.keys()))
 
-    for epic in epics.filter_by("summary", "*Toolbelt*"):
+    for epic in epics:
+        if epic.status_name.lower() == 'done':
+            print(f'\033[1;30mskipping epic {epic.key} {epic.summary!r} because has status {epic.status_name}')
+            continue
+
         candidate_epics = client.get_issues_by_summary(
             epic.summary, project=target_project
-        )
+        ).filter_by("issue_type_name", "Epic")
         if candidate_epics:
             target_epic = candidate_epics[0]
             print(f"\033[1;34mEpic already exists on target: {target_epic.key} {target_epic.summary!r}\033[0m")
@@ -130,9 +134,36 @@ def transfer_epics_and_subtasks_to_another_project(
             print(
                 f"\033[1;34mtransfering Epic {epic.key}: {epic.summary} to project {target_project.key}: {target_project.name}\033[0m"
             )
-            fields = {"description": epic.description}
-            # important: add epic as parent
-            fields["parent"] = target_epic.to_dict()
+            if isinstance(epic.description, dict):
+                new_description = epic.description.copy()
+            else:
+                new_description = {
+                    'content': [],
+                    'type': 'doc',
+                    'version': 1
+                }
+
+            new_description['content'].extend([
+                {'type': 'rule'},
+                {
+                    'content': [{
+                        'text': f'Cloned from {epic.key}',
+                        'type': 'text'
+                    }],
+                    'type': 'paragraph'
+                },
+                {
+                    'content': [{
+                        'text': f'Original status: {epic.status_name}',
+                        'type': 'text'
+                    }],
+                    'type': 'paragraph'
+                },
+            ])
+            fields = {
+                "description": new_description,
+                "customfield_10009": epic.summary
+            }
 
             for important_key in ["attachment", "components"]:
                 important_value = epic.get(important_key)
@@ -160,6 +191,13 @@ def transfer_epics_and_subtasks_to_another_project(
             )
             if target_epic:
                 print(f"\033[1;32mcreated Epic {target_epic.key}: {target_epic.summary}\033[0m")
+                print(f'\033[1;36mcreating link exists between epics {epic.key} and {target_epic.key}')
+                client.link_issues(
+                    epic,
+                    target_epic,
+                    f'ported from {source_project.key} through a script',
+                )
+
             else:
                 raise ThickDenimError(f'failed to create epic {new_epic_summary!r}')
 
@@ -171,7 +209,11 @@ def transfer_epics_and_subtasks_to_another_project(
             if isinstance(source_issue.description, dict):
                 new_description = source_issue.description.copy()
             else:
-                new_description = {'content': []}
+                new_description = {
+                    'content': [],
+                    'type': 'doc',
+                    'version': 1
+                }
 
             new_description['content'].extend([
                 {'type': 'rule'},
@@ -227,8 +269,8 @@ def transfer_epics_and_subtasks_to_another_project(
                 target_task_type = get_matching_issue_type(
                     "Tech Story", issue_types
                 )
-                # if not prompt_for_confirmation(f"Confirm ?"):
-                #     continue
+                if not prompt_for_confirmation(f"Confirm ?"):
+                    continue
 
                 try:
                     target_issue = client.get_or_create_issue_by_summary(
@@ -239,7 +281,7 @@ def transfer_epics_and_subtasks_to_another_project(
                     )
                 except JiraClientException as e:
                     print(
-                        f"\033[1;31mfailed to transfer task{source_issue.key} {source_issue.summary!r}: {e}\033[0m"
+                        f"\033[1;31mfailed to transfer issue {source_issue.key} {source_issue.summary!r}: {e}\033[0m"
                     )
                     raise SystemExit(1)
 
@@ -248,8 +290,8 @@ def transfer_epics_and_subtasks_to_another_project(
                         f"\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
                     )
 
-            linked_summaries = [link.target.summary for link in source_issue.issue_links]
-            if target_issue.summary not in linked_summaries:
+            linked_summaries = [link.target.summary for link in target_issue.issue_links]
+            if source_issue.summary not in linked_summaries:
                 print(f'\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}')
                 client.link_issues(
                     source_issue,
@@ -264,7 +306,7 @@ newstore_apps_fields = {
     #     'self': 'https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14539',
     #     'value': '#team-infrastructure'
     # },
-    "labels": ["infra-w9", "ported-by-script"],
+    "labels": ["infra-w9", "devx", "ported-by-script"],
     # 'status': ?
     "customfield_10602": {  # NA project only
         "id": "10315",
@@ -286,7 +328,6 @@ def main(config: ThickDenimConfig, args):
 
     print(f"retrieving issue types for project {source_project.key}")
     issue_types = client.get_issue_types(target_project)
-    tech_stories = issue_types.filter_by("name", "Tech Story")
 
     if not issue_types:
         print(

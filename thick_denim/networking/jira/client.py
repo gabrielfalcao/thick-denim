@@ -40,8 +40,10 @@ class JiraClientException(ThickDenimError):
 class JiraClientHttpException(JiraClientException):
     """raised when Jira API returns a non 2xx response"""
 
-    def __init__(self, url, data, status, message):
-        message = f"{message}.\n{status} for url {url}:\n\n{data}\n"
+    def __init__(self, response, data, status, message):
+        url = response.request.url
+        method = response.request.method
+        message = f"{message}.\n{status} for url {method} {url}:\n\n{data}\n"
         if isinstance(data, dict):
             self.errors = data.get("errors") or {}
         else:
@@ -174,7 +176,7 @@ class JiraClient(object):
         msg = f"{message} (page {current_page}) url: {next_url} (startAt: 0)"
         ui.debug(msg)
         response = self.http.get(next_url, params=params)
-        data = self.validated_response(url, response, message)
+        data = self.validated_response(response, message)
         next_url = data.get("nextPage", next_url)
         items = data[items_key]
         total = data.get("total", 0)
@@ -190,7 +192,7 @@ class JiraClient(object):
             current_page += 1
             msg = f"{message} (page {current_page}) url: {next_url} (startAt: {start_at})"
             response = self.http.get(next_url, params=params)
-            data = self.validated_response(next_url, response, msg)
+            data = self.validated_response(response, msg)
             next_url = data.get("nextPage", next_url)
             items.extend(data[items_key])
             ui.debug(msg)
@@ -218,7 +220,7 @@ class JiraClient(object):
         url = self.api_url("/issuetype")
         response = self.http.get(url, params=params)
         message = f"retrieving all issue types from {project.key}: {project.name}"
-        types = self.validated_response(url, response, message)
+        types = self.validated_response(response, message)
 
         return JiraIssueType.List(types).filter(
             lambda i: i.project_id == project.id
@@ -231,7 +233,7 @@ class JiraClient(object):
         return JiraProject(data)
 
     def validated_response(
-        self, url, response, message, valid_statuses=(200, 201, 202, 203, 204)
+        self, response, message, valid_statuses=(200, 201, 202, 203, 204)
     ):
         status = response.status_code
 
@@ -244,7 +246,7 @@ class JiraClient(object):
         else:
             data = response.text
 
-        raise JiraClientHttpException(url, data, status, message)
+        raise JiraClientHttpException(response, data, status, message)
 
     def create_issue(
         self,
@@ -296,7 +298,7 @@ class JiraClient(object):
         response = self.http.post(
             url, data=payload, headers={"Content-Type": "application/json"}
         )
-        meta = self.validated_response(url, response, message)
+        meta = self.validated_response(response, message)
         id = meta.get("id")
         key = meta.get("key")
 
@@ -338,7 +340,7 @@ class JiraClient(object):
         response = self.http.delete(
             url, params={"deleteSubtasks": cascade and "true" or "false"}
         )
-        data = self.validated_response(url, response, message)
+        data = self.validated_response(response, message)
         return data or issue
 
     def get_issue_link_types(self, max_pages: int = 1):
@@ -387,19 +389,19 @@ class JiraClient(object):
                 'Content-Type': 'application/json',
             }
         )
-        self.validated_response(url, response, f'linking issue {source_issue.key} to {target_issue.key}')
+        self.validated_response(response, f'linking issue {source_issue.key} to {target_issue.key}')
 
         ui.debug('issue link created, retrieving its data from api')
         url = response.headers.get('Location')
         response = self.http.get(url)
-        data = self.validated_response(url, response, f'retrieving issue link')
+        data = self.validated_response(response, f'retrieving issue link')
         return JiraIssueLink(data)
 
     def get_issue_statuses(self, project: JiraProject):
         url = self.api_url("/status")
         response = self.http.get(url)
         message = f"retrieving all issue statuses from project: {project.key} ({project.id})"
-        statuses = self.validated_response(url, response, message)
+        statuses = self.validated_response(response, message)
 
         return JiraIssueStatus.List(statuses).filter(
             lambda i: i.project_id == project.id
@@ -410,7 +412,7 @@ class JiraClient(object):
         url = self.api_url(f"/project/{project.id}/properties")
         response = self.http.get(url)
         message = f"retrieving all project properties from project: {project.key} ({project.id})"
-        properties = self.validated_response(url, response, message)
+        properties = self.validated_response(response, message)
 
         return JiraProjectProperties(properties)
 
@@ -418,13 +420,13 @@ class JiraClient(object):
         url = self.api_url(f"/customField/{field_id}/options")
         response = self.http.get(url)
         message = f"retrieving options for custom field: {field_id}"
-        return self.validated_response(url, response, message)
+        return self.validated_response(response, message)
 
     def get_custom_fields(self, project: JiraProject):
         url = self.api_url(f"/field")
         response = self.http.get(url)
         message = f"retrieving custom fields"
-        fields = self.validated_response(url, response, message)
+        fields = self.validated_response(response, message)
 
         return JiraCustomField.List(fields).filter(
             lambda i: i.project_id == project.id
