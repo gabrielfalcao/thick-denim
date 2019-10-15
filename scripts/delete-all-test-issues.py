@@ -32,3 +32,9 @@ def main(config: ThickDenimConfig):
         client, project, f"Basic Issue created via API*"
     )
     delete_issues_matching_summary(client, project, f"Test")
+
+    for issue in client.get_issues_from_project(project.id):
+        print(
+            f"\033[1;31mdeleting issue: \033[1;33m{issue.key}: \033[1;37m{issue.summary}\033[0m"
+        )
+        client.delete_issue(issue)

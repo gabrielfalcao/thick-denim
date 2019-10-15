@@ -157,7 +157,12 @@ def transfer_tasks_without_epic(client, source_project, target_project):
     issue_types = client.get_issue_types(target_project)
     source_issues_without_epic = client.get_issues_from_project(
         source_project.key
-    ).filter(lambda issue: not issue.parent)
+    ).filter(
+        lambda issue: not issue.parent
+    ).filter(
+        by.updated_within_last_2_months
+    )
+
     for source_task in source_issues_without_epic:
         fields = {"description": source_task.description}
         for important_key in ["attachment", "components"]:
