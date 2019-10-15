@@ -21,6 +21,34 @@ skin.
 That's why we got "Thick-Denim".
 
 
+Installing:
+-----------
+
+
+1. Clone this repo somewhere.
+2. Install manually with ``python setup.py develop`` or ``pip install -e .[test]`` (we don't have a pypi package ready yet)
+
+.. code:: bash
+
+
+   python3 setup.py develop
+
+3. Configure your github + jira credentials at ``~/.thick-denim.yml``
+
+.. code:: yaml
+
+   jira:
+     accounts:
+       goodscloud:
+         token: SOME_TOKEN  # get one at https://id.atlassian.com/manage/api-tokens
+         server: https://goodscloud.atlassian.net
+         email: gfalcao@newstore.com  # replace with your jira email
+
+
+   github:
+     token: SOMETOKEN  # feel free to ignore this if all you need is JIRA
+
+
 How to contribute:
 ------------------
 
