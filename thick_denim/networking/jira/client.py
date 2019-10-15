@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 def escape_jql(string):
-    return re.sub(r'\W+', ' ', string)
+    return re.sub(r"\W+", " ", string)
 
 
 class JiraClientException(ThickDenimError):
@@ -32,7 +32,7 @@ class JiraClientHttpException(JiraClientException):
 
     def __init__(self, url, data, status, message):
         message = f"{message}.\n{status} for url {url}: {data}"
-        self.errors = data.get('errors') or {}
+        self.errors = data.get("errors") or {}
         super().__init__(message)
 
 
@@ -84,8 +84,7 @@ class JiraClient(object):
             "fieldsByKeys": False,
         }
         response = self.http.get(
-            self.api_url(f"/issue/{issue_key}"),
-            params=params,
+            self.api_url(f"/issue/{issue_key}"), params=params
         ).json()
         data = response["fields"]
         names = response.get("names")
@@ -232,7 +231,7 @@ class JiraClient(object):
         summary: str,
         project: JiraProject,
         issue_type: JiraIssueType,
-        basic_description: str = '',
+        basic_description: str = "",
         parent: JiraIssue = None,
         fields: dict = None,
     ):
@@ -243,16 +242,21 @@ class JiraClient(object):
             "summary": summary,
             "issuetype": issue_type.to_dict(),
             "project": project.to_dict(),
-            "description": fields.pop('description', {
-                "type": "doc",
-                "version": 1,
-                "content": [
-                    {
-                        "type": "paragraph",
-                        "content": [{"text": basic_description, "type": "text"}],
-                    }
-                ],
-            }),
+            "description": fields.pop(
+                "description",
+                {
+                    "type": "doc",
+                    "version": 1,
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": [
+                                {"text": basic_description, "type": "text"}
+                            ],
+                        }
+                    ],
+                },
+            ),
         }
         merged_fields = fields.copy()
         merged_fields.update(required_fields)
@@ -265,7 +269,9 @@ class JiraClient(object):
 
             merged_fields["parent"] = parent.to_dict()
 
-        payload = json.dumps({"update": update_fields, "fields": merged_fields})
+        payload = json.dumps(
+            {"update": update_fields, "fields": merged_fields}
+        )
         url = self.api_url("/issue")
         response = self.http.post(
             url, data=payload, headers={"Content-Type": "application/json"}
@@ -281,7 +287,9 @@ class JiraClient(object):
 
         return JiraIssue(meta)
 
-    def get_issue_by_summary(self, summary: str, project: JiraProject) -> JiraIssueType:
+    def get_issue_by_summary(
+        self, summary: str, project: JiraProject
+    ) -> JiraIssueType:
         existing_issues = self.get_issues_by_summary(summary, project=project)
         total_issues = len(existing_issues)
         if total_issues == 1:
@@ -289,7 +297,9 @@ class JiraClient(object):
         elif total_issues > 1:
             raise TooManyIssuesMatched(f'summary="{summary}"', existing_issues)
 
-    def get_or_create_issue_by_summary(self, summary: str, project: JiraProject, *args, **kw):
+    def get_or_create_issue_by_summary(
+        self, summary: str, project: JiraProject, *args, **kw
+    ):
         found = self.get_issue_by_summary(summary, project=project)
         if found:
             return found
@@ -308,7 +318,5 @@ class JiraClient(object):
         response = self.http.delete(
             url, params={"deleteSubtasks": cascade and "true" or "false"}
         )
-        data = self.validated_response(
-            url, response, message
-        )
+        data = self.validated_response(url, response, message)
         return data or issue

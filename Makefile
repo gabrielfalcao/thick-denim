@@ -28,7 +28,7 @@ lint: # run flake8
 	poetry run flake8 --ignore=E501 thick_denim tests docs/source/conf.py
 
 black: # format all python code with black
-	poetry run black --line-length 79 thick_denim tests docs/source/conf.py
+	poetry run black --line-length 79 thick_denim tests docs/source/conf.py scripts
 
 develop: # install all development dependencies with poetry
 	poetry install
