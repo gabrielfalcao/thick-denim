@@ -6,6 +6,7 @@ import click
 from pathlib import Path
 from thick_denim.version import version
 from thick_denim.config import ThickDenimConfig
+from thick_denim.errors import ThickDenimError
 
 from thick_denim import logs
 
@@ -41,9 +42,10 @@ def print_version():
     logs.print(f"thick-denim {version}")
 
 
-@main.command(name="run")
+@main.command(name="run", context_settings=dict(ignore_unknown_options=True))
 @click.argument("filename")
-def run(filename):
+@click.argument("args", nargs=-1, type=click.UNPROCESSED)
+def run(filename, args):
     "runs the code in the given file"
     filename = Path(filename).expanduser().absolute()
     if not filename.exists():
@@ -68,4 +70,7 @@ def run(filename):
         )
         raise SystemExit(1)
 
-    main(config)
+    try:
+        main(config, args)
+    except ThickDenimError as exc:
+        logs.print_err(f"{exc.__class__.__name__}: \033[1;31m{exc}")

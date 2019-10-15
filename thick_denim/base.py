@@ -127,18 +127,29 @@ class Model(DataBag, metaclass=MetaModel):
         self.initialize(*args, **kw)
 
     def __lt__(self, e) -> bool:
+        if not isinstance(e, Model):
+            return False
+
         return self.sort_key < e.sort_key
 
     def __lte__(self, e) -> bool:
+        if not isinstance(e, Model):
+            return False
         return self.sort_key <= e.sort_key
 
     def __gt__(self, e) -> bool:
+        if not isinstance(e, Model):
+            return True
         return self.sort_key > e.sort_key
 
     def __gte__(self, e) -> bool:
+        if not isinstance(e, Model):
+            return True
         return self.sort_key >= e.sort_key
 
     def __eq__(self, other):
+        if not isinstance(other, Model):
+            return False
         criteria = [
             isinstance(other, type(self)),
             other.__ui_attributes__() == self.__ui_attributes__(),
@@ -192,10 +203,10 @@ class Model(DataBag, metaclass=MetaModel):
 
     def __ui_attributes__(self):
         return dict(
-            [
+            filter(lambda tup: tup[1], [
                 (name, getattr(self, name, self.get(name)))
                 for name in self.__visible_atttributes__
-            ]
+            ])
         )
 
     def attribute_matches_glob(
@@ -256,6 +267,9 @@ class IterableCollection:
             )
 
         self.model_class = model_class
+
+    def count(self) -> int:
+        return len(self)
 
     def New(self, items, **kw):
         return self.__class__(self.model_class, sorted(items, **kw))

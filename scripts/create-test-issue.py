@@ -32,7 +32,7 @@ def delete_issues_matching_summary(
         client.delete_issue(issue)
 
 
-def main(config: ThickDenimConfig):
+def main(config: ThickDenimConfig, args):
     client = JiraClient(config, "goodscloud")
 
     project = get_test_project(client)

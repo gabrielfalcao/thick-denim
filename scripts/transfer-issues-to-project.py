@@ -2,6 +2,7 @@ import pendulum
 import logging
 from typing import List
 from humanfriendly.text import pluralize
+from humanfriendly.prompts import prompt_for_confirmation
 from thick_denim.config import ThickDenimConfig
 from thick_denim.base import store_models, load_models, slugify
 from thick_denim.networking.jira.client import JiraClient, JiraClientException
@@ -12,6 +13,21 @@ from thick_denim.logs import UIReporter
 
 ui = UIReporter("Issue Transferrer")
 logger = logging.getLogger(__name__)
+
+newstore_apps_fields = {
+    "customfield_14191": {  # TST project only
+        "id": "14539",
+        "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14539",
+        "value": "#team-infrastructure",
+    },
+    "labels": ["infra-w9"],
+    # 'status': ?
+    # "customfield_10602": {  # NA project only
+    #     "id": "10315",
+    #     "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/10315",
+    #     "value": "#infrastructure",
+    # },
+}
 
 
 def delete_all_issues_from_project(client: JiraClient, project: JiraProject):
@@ -66,6 +82,12 @@ class by:
         age_in = today - issue.updated_at
         return age_in.months <= 2
 
+    @staticmethod
+    def status_is_not_done(issue):
+        return (
+            "".join(str(issue.status_name).lower().split()).strip() != "done"
+        )
+
 
 def pluralize_issues(items: List[JiraIssue], singular: str = "issue") -> str:
     count = len(items)
@@ -79,7 +101,7 @@ def get_source_issues_by_epic(client: JiraClient, source_project: JiraProject):
 
     source_issues = get_issues_by_project_from_cache_or_api(
         client, project_key=source_project.key, update_cache=UPDATE_CACHE
-    )
+    ).filter(by.status_is_not_done)
     issues_active_within_last_2_months = source_issues.filter(
         by.updated_within_last_2_months
     )
@@ -139,32 +161,18 @@ def get_matching_issue_type(
     return target_task_type
 
 
-def main(config: ThickDenimConfig):
-    client = JiraClient(config, "goodscloud")
-    target_project = client.get_project("TST")
-    source_project = client.get_project("TDX")
-    delete_all_issues_from_project(client, target_project)
-
-    TASKS_BY_EPIC = get_source_issues_by_epic(client, source_project)
-
-    transfer_tasks_without_epic(client, source_project, target_project)
-    transfer_epics_and_subtasks_to_another_project(
-        client, source_project, target_project, TASKS_BY_EPIC
-    )
-
-
 def transfer_tasks_without_epic(client, source_project, target_project):
     issue_types = client.get_issue_types(target_project)
-    source_issues_without_epic = client.get_issues_from_project(
-        source_project.key
-    ).filter(
-        lambda issue: not issue.parent
-    ).filter(
-        by.updated_within_last_2_months
+    source_issues_without_epic = (
+        client.get_issues_from_project(source_project.key)
+        .filter(lambda issue: not issue.parent)
+        .filter(by.updated_within_last_2_months)
     )
 
     for source_task in source_issues_without_epic:
         fields = {"description": source_task.description}
+        fields.update(newstore_apps_fields)
+
         for important_key in ["attachment", "components"]:
             important_value = source_task.get(important_key)
             if important_value:
@@ -203,10 +211,11 @@ def transfer_tasks_without_epic(client, source_project, target_project):
 def transfer_epics_and_subtasks_to_another_project(
     client, source_project, target_project, TASKS_BY_EPIC
 ):
+    print(f"retrieving issue types for project {project.key}")
     issue_types = client.get_issue_types(target_project)
     epics = JiraIssue.List(list(TASKS_BY_EPIC.keys()))
 
-    for epic in epics:
+    for epic in epics.filter_by("summary", "*Python* "):
         existent_in_target = client.get_issues_by_summary(
             epic.summary, project=target_project
         )
@@ -218,6 +227,7 @@ def transfer_epics_and_subtasks_to_another_project(
             f"transfering Epic {epic.key}: {epic.summary} to project {target_project.key}: {target_project.name}"
         )
         fields = {"description": epic.description}
+
         for important_key in ["attachment", "components"]:
             important_value = epic.get(important_key)
             if important_value:
@@ -232,6 +242,10 @@ def transfer_epics_and_subtasks_to_another_project(
         target_task_type = get_matching_issue_type(
             epic.issue_type_name, issue_types
         )
+        if not prompt_for_confirmation(
+            f"Confirm cloning EPIC {epic.key}: {epic.summary!r} to {target_project.key} ?"
+        ):
+            continue
         target_epic = client.get_or_create_issue_by_summary(
             f"{epic.summary} (former {epic.key})",
             project=target_project,
@@ -242,6 +256,7 @@ def transfer_epics_and_subtasks_to_another_project(
             print(f"\tcreated Epic {target_epic.key}: {target_epic.summary}")
             for source_task in TASKS_BY_EPIC[epic]:
                 fields = {"description": source_task.description}
+                fields.update(newstore_apps_fields)
                 for important_key in ["attachment", "components"]:
                     important_value = source_task.get(important_key)
                     if important_value:
@@ -257,8 +272,13 @@ def transfer_epics_and_subtasks_to_another_project(
                     f'\t\ttransfering {source_task.key} "{source_task.summary}" to {target_project.key}'
                 )
                 target_task_type = get_matching_issue_type(
-                    source_task.issue_type_name, issue_types
+                    "Tech Story", issue_types
                 )
+                if not prompt_for_confirmation(
+                    f"Confirm cloning {source_task.key}: {source_task.summary!r} to {target_project.key} ?"
+                ):
+                    continue
+
                 try:
                     transferred_task = client.get_or_create_issue_by_summary(
                         f"{source_task.summary} (former {source_task.key})",
@@ -274,3 +294,20 @@ def transfer_epics_and_subtasks_to_another_project(
                     print(
                         f"\t\ttransfered task {transferred_task.key}: {transferred_task.summary}"
                     )
+                    print("---BREAK HERE--")
+                    raise SystemExit(0)
+
+
+def main(config: ThickDenimConfig, args):
+    client = JiraClient(config, "goodscloud")
+    source_project = client.get_project("TDX")
+    target_project = client.get_project("NA")
+
+    # delete_all_issues_from_project(client, target_project)
+
+    TASKS_BY_EPIC = get_source_issues_by_epic(client, source_project)
+
+    # transfer_tasks_without_epic(client, source_project, target_project)
+    transfer_epics_and_subtasks_to_another_project(
+        client, source_project, target_project, TASKS_BY_EPIC
+    )

@@ -10,7 +10,16 @@ from typing import List
 from thick_denim.errors import ThickDenimError
 from thick_denim.config import ThickDenimConfig
 from thick_denim.logs import UIReporter
-from .models import JiraIssue, JiraProject, JiraIssueChangelog, JiraIssueType
+from .models import (
+    JiraIssue,
+    JiraIssueChangelog,
+    JiraIssueLink,
+    JiraIssueLinkType,
+    JiraIssueType,
+    JiraIssueStatus,
+    JiraProject,
+    JiraProjectProperties,
+)
 
 
 ui = UIReporter("Jira Client")
@@ -31,8 +40,12 @@ class JiraClientHttpException(JiraClientException):
     """raised when Jira API returns a non 2xx response"""
 
     def __init__(self, url, data, status, message):
-        message = f"{message}.\n{status} for url {url}: {data}"
-        self.errors = data.get("errors") or {}
+        message = f"{message}.\n{status} for url {url}:\n\n{data}\n"
+        if isinstance(data, dict):
+            self.errors = data.get("errors") or {}
+        else:
+            self.errors = {"raw": data}
+
         super().__init__(message)
 
 
@@ -89,6 +102,10 @@ class JiraClient(object):
         data = response["fields"]
         names = response.get("names")
         issue = JiraIssue(data)
+        if not issue.key:
+            # hack for classic projects whose response does not include key
+            issue["key"] = issue_key
+
         if names:
             issue = issue.with_updated_field_names(names)
 
@@ -119,14 +136,14 @@ class JiraClient(object):
                 lambda issue: issue.with_updated_field_names(names),
                 JiraIssue.Set(items),
             )
-        )
+        ).sorted_by('updated_at', reverse=True)
 
     def get_issues_by_summary(
         self, summary: str, project: JiraProject = None, max_pages: int = -1
     ):
         parts = [f'summary ~ "{escape_jql(summary)}"']
         if project:
-            parts.append(f"project = {project.id}")
+            parts.append(f"project = {project.key}")
 
         jql = " AND ".join(parts)
         return self.get_issues_with_jql(jql)
@@ -195,14 +212,16 @@ class JiraClient(object):
         return JiraProject.Set(items)
 
     def get_issue_types(self, project: JiraProject, max_pages: int = 1):
-        logger.debug(f"retrieving all issue types")
-        params = {"maxResults": 50, "startAt": 0, "orderBy": "key"}
+        params = {}  # "orderBy": "key"}
 
-        response = self.http.get(self.api_url("/issuetype"), params=params)
-        types = response.json()
+        url = self.api_url("/issuetype")
+        response = self.http.get(url, params=params)
+        message = f"retrieving all issue types from {project.key}: {project.name}"
+        types = self.validated_response(url, response, message)
 
         return JiraIssueType.Set(types).filter(
             lambda i: i.project_id == project.id
+            or (project.style == "classic" and not i.project_id)
         )
 
     def get_project(self, id_or_key):
@@ -312,7 +331,7 @@ class JiraClient(object):
         if not issue.key:
             raise JiraClientException(f"issue does not have key: {issue}")
 
-        message = f"deleting issue: {issue}"
+        message = f"deleting issue: {issue.key}: {issue.summary!r}"
         logger.debug(message)
         url = self.api_url(f"/issue/{issue.key}")
         response = self.http.delete(
@@ -320,3 +339,76 @@ class JiraClient(object):
         )
         data = self.validated_response(url, response, message)
         return data or issue
+
+    def get_issue_link_types(self, max_pages: int = 1):
+        logger.debug(f"retrieving all issue link types")
+
+        response = self.http.get(self.api_url("/issueLinkType"))
+
+        data = response.json()
+        types = data["issueLinkTypes"]
+        return JiraIssueLinkType.List(types)
+
+    def link_issues(
+        self,
+        source_issue: JiraIssue,
+        target_issue: JiraIssue,
+        description: str,
+        link_type_name: str = "Cloners",
+    ):
+        payload = {
+            "outwardIssue": {"key": target_issue.key},
+            "comment": {
+                "body": {
+                    "type": "doc",
+                    "version": 1,
+                    "content": [
+                        {
+                            "type": "paragraph",
+                            "content": [
+                                {
+                                    "text": description,
+                                    "type": "text",
+                                }
+                            ],
+                        }
+                    ],
+                },
+            },
+            "inwardIssue": {"key": source_issue.key},
+            "type": {"name": link_type_name},
+        }
+        url = self.api_url('/issueLink')
+        response = self.http.post(
+            url,
+            data=json.dumps(payload),
+            headers={
+                'Content-Type': 'application/json',
+            }
+        )
+        self.validated_response(url, response, f'linking issue {source_issue.key} to {target_issue.key}')
+
+        ui.debug('issue link created, retrieving its data from api')
+        url = response.headers.get('Location')
+        response = self.http.get(url)
+        data = self.validated_response(url, response, f'retrieving issue link')
+        return JiraIssueLink(data)
+
+    def get_issue_statuses(self, project: JiraProject):
+        url = self.api_url("/status")
+        response = self.http.get(url)
+        message = f"retrieving all issue statuses from project: {project.key} ({project.id})"
+        statuses = self.validated_response(url, response, message)
+
+        return JiraIssueStatus.List(statuses).filter(
+            lambda i: i.project_id == project.id
+            or (project.style == "classic" and not i.project_id)
+        )
+
+    def get_project_properties(self, project: JiraProject):
+        url = self.api_url(f"/project/{project.id}/properties")
+        response = self.http.get(url)
+        message = f"retrieving all project properties from project: {project.key} ({project.id})"
+        properties = self.validated_response(url, response, message)
+
+        return JiraProjectProperties(properties)

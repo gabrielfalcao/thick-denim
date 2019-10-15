@@ -37,11 +37,11 @@ def pluralize_issues(items: List[JiraIssue], singular: str = "issue") -> str:
     return pluralize(count, singular)
 
 
-def main(config: ThickDenimConfig):
+def main(config: ThickDenimConfig, args):
     client = JiraClient(config, "goodscloud")
 
     all_tdx_issues = get_issues_from_cache_or_api(
-        client, project_key="TDX", update_cache=False
+        client, project_key="TDX", update_cache=True
     )
     issues_active_within_last_2_months = all_tdx_issues.filter(
         by.updated_within_last_2_months
