@@ -58,6 +58,7 @@ install_requires = [
     "requests>=2.22",
     "ruamel.yaml>=0.15.96",
     "sshtunnel>=0.1.4",
+    "ordered-set==3.1.1",
 ]
 
 tests_require = [
@@ -96,7 +97,7 @@ setup(
         ]
     ),
     long_description=local_file("README.rst"),
-    entry_points={"console_scripts": ["thick_denim = thick_denim.cli:entrypoint"]},
+    entry_points={"console_scripts": ["thick-denim = thick_denim.cli:entrypoint"]},
     url="https://github.com/NewStore/thick-denim",
     packages=find_packages(exclude=["*tests*"]),
     include_package_data=True,

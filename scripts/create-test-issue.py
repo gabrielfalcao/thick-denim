@@ -63,7 +63,7 @@ def main(config: ThickDenimConfig):
         f'Test Epic #1',
         project,
         issue_type=epic_type,
-        description=description
+        basic_description=description
     )
     if not test_epic:
         print('failed to get or create epic')
@@ -80,7 +80,7 @@ def main(config: ThickDenimConfig):
         project,
         parent=test_epic,
         issue_type=task_type,
-        description=description
+        basic_description=description
     )
 
     print(f"created task {test_task.key}: {test_task.summary!r}")

@@ -49,9 +49,7 @@ def stub_config_with_jira_account(
     return stub_config({"jira": {"accounts": {account_name: account_config}}})
 
 
-def stub_config_with_github_token(
-    token: str, **kwargs
-):
+def stub_config_with_github_token(token: str, **kwargs):
     """to make real API requests create a token in this url https://github.com/settings/tokens
     """
     github_config = {"token": token}

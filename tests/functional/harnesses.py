@@ -6,7 +6,7 @@ from pathlib import Path
 
 functional_tests_path = Path(__file__).parent
 tests_path = functional_tests_path.parent
-data_output_path = tests_path.joinpath('data-output')
+data_output_path = tests_path.joinpath("data-output")
 
 
 def vcr_for_domain(domain_name: str, record_mode="once"):

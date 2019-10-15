@@ -24,7 +24,13 @@ class JiraIssue(Model):
 
     @property
     def parent(self):
-        return self.get("Parent Link") or self.fields.get("parentLink")
+        value = self.get("parent") or self.fields.get("parent")
+        if value:
+            return JiraIssue(value)
+
+    @property
+    def description(self):
+        return self.fields.get("description")
 
     @property
     def created_at(self):
@@ -45,6 +51,10 @@ class JiraIssue(Model):
     @property
     def assignee(self):
         return self.fields.get("assignee") or self.get("Assignee") or {}
+
+    @property
+    def reporter(self):
+        return self.fields.get("reporter") or self.get("Reporter") or {}
 
     @property
     def assignee_id(self):
@@ -85,6 +95,10 @@ class JiraIssue(Model):
     @property
     def assignee_key(self):
         return self.assignee.get("key")
+
+    @property
+    def reporter_key(self):
+        return self.reporter.get("key")
 
     def with_updated_field_names(self, names):
         for code_name, humanized_name in names.items():

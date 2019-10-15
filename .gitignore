@@ -67,3 +67,4 @@ tests/.cache/
 pip-wheel-metadata
 /tests/.cache
 tests/functional/.vcr-cassetes/
+tests/data-output/

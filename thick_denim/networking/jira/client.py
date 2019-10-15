@@ -2,6 +2,7 @@
 """
 contains utilities to make calls to the Jira API
 """
+import re
 import json
 import requests
 import logging
@@ -18,6 +19,10 @@ ui = UIReporter("Jira Client")
 logger = logging.getLogger(__name__)
 
 
+def escape_jql(string):
+    return re.sub(r'\W+', ' ', string)
+
+
 class JiraClientException(ThickDenimError):
     """raised within the JiraClient class"""
 
@@ -27,6 +32,7 @@ class JiraClientHttpException(JiraClientException):
 
     def __init__(self, url, data, status, message):
         message = f"{message}.\n{status} for url {url}: {data}"
+        self.errors = data.get('errors') or {}
         super().__init__(message)
 
 
@@ -119,7 +125,7 @@ class JiraClient(object):
     def get_issues_by_summary(
         self, summary: str, project: JiraProject = None, max_pages: int = -1
     ):
-        parts = [f'summary ~ "{summary}"']
+        parts = [f'summary ~ "{escape_jql(summary)}"']
         if project:
             parts.append(f"project = {project.id}")
 
@@ -226,29 +232,30 @@ class JiraClient(object):
         summary: str,
         project: JiraProject,
         issue_type: JiraIssueType,
-        description: str,
+        basic_description: str = '',
         parent: JiraIssue = None,
-        **fields,
+        fields: dict = None,
     ):
-        message = f"creating issue {summary!r} of type {issue_type} in project {project}: {description}"
+        fields = fields or {}
+        message = f"creating issue {summary!r} of type {issue_type} in project {project}: {basic_description}"
         logger.info(message)
         required_fields = {
             "summary": summary,
             "issuetype": issue_type.to_dict(),
             "project": project.to_dict(),
-            "description": {
+            "description": fields.pop('description', {
                 "type": "doc",
                 "version": 1,
                 "content": [
                     {
                         "type": "paragraph",
-                        "content": [{"text": description, "type": "text"}],
+                        "content": [{"text": basic_description, "type": "text"}],
                     }
                 ],
-            },
+            }),
         }
-        merged_fields = required_fields.copy()
-        merged_fields.update(fields)
+        merged_fields = fields.copy()
+        merged_fields.update(required_fields)
         update_fields = {}
         if parent:
             if not parent.id:
@@ -272,26 +279,22 @@ class JiraClient(object):
             fresh.update(meta)
             return fresh
 
-        import ipdb;ipdb.set_trace()
         return JiraIssue(meta)
 
-    def get_issue_by_summary(self, summary: str) -> JiraIssueType:
-        existing_issues = self.get_issues_by_summary(summary)
+    def get_issue_by_summary(self, summary: str, project: JiraProject) -> JiraIssueType:
+        existing_issues = self.get_issues_by_summary(summary, project=project)
         total_issues = len(existing_issues)
         if total_issues == 1:
             return existing_issues[0]
         elif total_issues > 1:
-            import ipdb
-
-            ipdb.set_trace()
             raise TooManyIssuesMatched(f'summary="{summary}"', existing_issues)
 
-    def get_or_create_issue_by_summary(self, summary: str, *args, **kw):
-        found = self.get_issue_by_summary(summary)
+    def get_or_create_issue_by_summary(self, summary: str, project: JiraProject, *args, **kw):
+        found = self.get_issue_by_summary(summary, project=project)
         if found:
             return found
 
-        return self.create_issue(summary, *args, **kw)
+        return self.create_issue(summary, project=project, *args, **kw)
 
     def delete_issue(
         self, issue: JiraIssue, cascade: bool = False
@@ -308,4 +311,4 @@ class JiraClient(object):
         data = self.validated_response(
             url, response, message
         )
-        return data
+        return data or issue

@@ -10,7 +10,7 @@ vcr = vcr_for_domain("github", record_mode="new_episodes")
 
 def stubbed_github_client(repository_name):
     config = stub_config_with_github_token(
-        token="CHANGE_ME"
+        token="339b035731674dcf84798e6b766802f5dd412d22"
     )
     client = GithubClient(config, repository_name, owner_name="NewStore")
     return client
@@ -27,8 +27,8 @@ def test_github_get_pull_requests():
     open_prs = client.list_pull_requests("open", max_pages=1)
     closed_prs = client.list_pull_requests("closed", max_pages=1)
 
-    dump_json('github-some-open-prs.json', open_prs.to_dict())
-    dump_json('github-some-closed-prs.json', closed_prs.to_dict())
+    dump_json("github-some-open-prs.json", open_prs.to_dict())
+    dump_json("github-some-closed-prs.json", closed_prs.to_dict())
 
 
 @vcr.use_cassette
@@ -51,7 +51,10 @@ def test_github_get_comments_from_pr():
     comments_on_buildbot_pr = client.list_comments_from_pull_request(
         database2_buildbot_pr.number, max_pages=-1
     )
-    dump_json(f'github-commands-from-pr-{database2_buildbot_pr.number}.json', comments_on_buildbot_pr.to_dict())
+    dump_json(
+        f"github-commands-from-pr-{database2_buildbot_pr.number}.json",
+        comments_on_buildbot_pr.to_dict(),
+    )
     comments_on_buildbot_pr.should.have.length_of(6)
 
     comments = [
