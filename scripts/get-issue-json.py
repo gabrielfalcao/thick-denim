@@ -11,4 +11,4 @@ def main(config: ThickDenimConfig, args):
 
     key = args[0]
     issue = client.get_issue(key)
-    import ipdb;ipdb.set_trace()
+    print(json.dumps(issue.to_dict(), indent=4))

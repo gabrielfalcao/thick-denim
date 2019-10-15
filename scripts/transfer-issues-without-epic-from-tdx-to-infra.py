@@ -1,6 +1,5 @@
 import pendulum
 import logging
-import json
 from typing import List
 from humanfriendly.text import pluralize
 from humanfriendly.prompts import prompt_for_confirmation
@@ -34,10 +33,7 @@ class by:
 def get_source_issues_by_epic(client: JiraClient, source_project: JiraProject):
     """retrieves all issues from a project and returns them
     in a dictionary where the key is the epic issue and the
-    value is a a lit of issues
-
-    Note: this function prints some stats to STDOUT
-    """
+    value is a a lit of issues"""
 
     print(
         f"retrieving list of all issues in source project: {source_project.key}"
@@ -113,8 +109,70 @@ def get_matching_issue_type(
     return target_task_type
 
 
+def transfer_tasks_without_epic(client, source_project, target_project):
+    """this function contains a loop that iterate over all epics in the
+    source project, then a nested loop of all issues inside of this
+    epic, then it clones each epic and child issue to the target
+    project by prompting user to confirm the creation on each loop.
+    """
+    issue_types = client.get_issue_types(target_project)
+    source_issues_without_epic = (
+        client.get_issues_from_project(source_project.key)
+        .filter(lambda issue: not issue.parent)
+        .filter(by.updated_within_last_2_months)
+    )
+
+    for source_issue in source_issues_without_epic:
+        if source_issue.status_name.lower() == 'done':
+            print(f'\033[1;30mskipping issue {source_issue.key} because has status {source_issue.status_name}')
+            continue
+
+        fields = {"description": source_issue.description}
+        fields.update(newstore_apps_fields)
+
+        for important_key in ["attachment", "components"]:
+            important_value = source_issue.get(important_key)
+            if important_value:
+                fields[important_key] = important_value
+
+        if source_issue.assignee_key:
+            fields["assignee"] = source_issue.assignee
+
+        new_summary = f"{source_issue.summary} (former {source_issue.key})"
+        print(
+            f'transfering epic-less {source_issue.key} "{source_issue.summary}" to {target_project.key}'
+        )
+        target_task_type = get_matching_issue_type(
+            source_issue.issue_type_name, issue_types
+        )
+        candidate_issues = client.get_issues_by_summary(
+            source_issue.summary, project=target_project
+        )
+        target_issue = candidate_issues and candidate_issues[0]
+
+        if target_issue:
+            print(f"\033[1;34mIssue already exists: {target_issue.key}\033[0m")
+            continue
+
+        try:
+            target_issue = client.get_or_create_issue_by_summary(
+                new_summary,
+                project=target_project,
+                issue_type=target_task_type,
+                fields=fields,
+            )
+        except JiraClientException as e:
+            logger.exception(f"failed to transfer {new_summary!r}: {e}")
+            continue
+
+        if target_issue:
+            print(
+                f"\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
+            )
+
+
 def transfer_epics_and_subtasks_to_another_project(
-        client, source_project, target_project, TASKS_BY_EPIC, issue_types,
+    client, source_project, target_project, TASKS_BY_EPIC, issue_types
 ):
     epics = JiraIssue.List(list(TASKS_BY_EPIC.keys()))
 
@@ -151,6 +209,10 @@ def transfer_epics_and_subtasks_to_another_project(
             if not prompt_for_confirmation(f"Confirm ?"):
                 continue
 
+            if target_project.key == 'NA':
+                # NewStore Apps project has a custom field for the epic "link", the value must be the epic key.
+                fields["customfield_10009"] = epic.key
+
             new_epic_summary = f"{epic.summary} (former {epic.key})"
             target_epic = client.get_or_create_issue_by_summary(
                 new_epic_summary,
@@ -165,42 +227,10 @@ def transfer_epics_and_subtasks_to_another_project(
 
         for source_issue in TASKS_BY_EPIC[epic]:
             if source_issue.status_name.lower() == 'done':
-                print(f'\033[1;30mskipping issue {source_issue.key} {source_issue.summary!r} because has status {source_issue.status_name}')
+                print(f'\033[1;30mskipping issue {source_issue.key} because has status {source_issue.status_name}')
                 continue
 
-            if isinstance(source_issue.description, dict):
-                new_description = source_issue.description.copy()
-            else:
-                new_description = {'content': []}
-
-            new_description['content'].extend([
-                {'type': 'rule'},
-                {
-                    'content': [{
-                        'text': f'Epic: {target_epic.key}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-                {
-                    'content': [{
-                        'text': f'Cloned from {source_issue.key}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-                {
-                    'content': [{
-                        'text': f'Original status: {source_issue.status_name}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-            ])
-            fields = {"description": new_description}
-            if target_project.style == 'classic':
-                fields["customfield_10008"] = target_epic.key
-
+            fields = {"description": source_issue.description}
             fields.update(newstore_apps_fields)
             for important_key in ["attachment", "components"]:
                 important_value = source_issue.get(important_key)
@@ -219,6 +249,8 @@ def transfer_epics_and_subtasks_to_another_project(
             target_issue = candidate_issues and candidate_issues[0]
 
             if target_issue:
+                client.link_issues(source_issue, target_issue, 'Cloners')
+
                 print(f"\033[1;34mIssue already exists: {target_issue.key} {target_issue.summary!r}\033[0m")
             else:
                 print(
@@ -227,8 +259,8 @@ def transfer_epics_and_subtasks_to_another_project(
                 target_task_type = get_matching_issue_type(
                     "Tech Story", issue_types
                 )
-                # if not prompt_for_confirmation(f"Confirm ?"):
-                #     continue
+                if not prompt_for_confirmation(f"Confirm ?"):
+                    continue
 
                 try:
                     target_issue = client.get_or_create_issue_by_summary(
@@ -245,12 +277,12 @@ def transfer_epics_and_subtasks_to_another_project(
 
                 if target_issue:
                     print(
-                        f"\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
+                        f"\t\t\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
                     )
 
             linked_summaries = [link.target.summary for link in source_issue.issue_links]
             if target_issue.summary not in linked_summaries:
-                print(f'\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}')
+                print(f'\t\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}')
                 client.link_issues(
                     source_issue,
                     target_issue,
@@ -264,7 +296,7 @@ newstore_apps_fields = {
     #     'self': 'https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14539',
     #     'value': '#team-infrastructure'
     # },
-    "labels": ["infra-w9", "ported-by-script"],
+    "labels": ["infra-w9"],
     # 'status': ?
     "customfield_10602": {  # NA project only
         "id": "10315",
@@ -294,13 +326,10 @@ def main(config: ThickDenimConfig, args):
         )
         raise SystemExit(1)
 
-    TASKS_BY_EPIC = get_source_issues_by_epic(client, source_project)
-
     print(f"beginning to port issues to project {target_project.name} ({target_project.key})")
+
     try:
-        transfer_epics_and_subtasks_to_another_project(
-            client, source_project, target_project, TASKS_BY_EPIC, issue_types,
-        )
+        transfer_tasks_without_epic(client, source_project, target_project)
     except KeyboardInterrupt:
         print("\rUser cancelled (Control-C)")
         raise SystemExit(130)

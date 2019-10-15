@@ -5,10 +5,8 @@ from thick_denim.networking.jira.client import JiraClient
 
 def main(config: ThickDenimConfig, args):
     client = JiraClient(config, "goodscloud")
-    if len(args) != 1:
-        print(f"USAGE: thick-denim run {__file__} ISSUE-01234")
-        raise SystemExit(1)
 
-    key = args[0]
-    issue = client.get_issue(key)
+    project = client.get_project("NA")
+    options = client.get_custom_fields(project)
+
     import ipdb;ipdb.set_trace()

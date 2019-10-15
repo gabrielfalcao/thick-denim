@@ -268,7 +268,8 @@ class IterableCollection:
 
         self.model_class = model_class
 
-    def count(self) -> int:
+    @property
+    def length(self) -> int:
         return len(self)
 
     def New(self, items, **kw):

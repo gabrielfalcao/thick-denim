@@ -17,6 +17,7 @@ from .models import (
     JiraIssueLinkType,
     JiraIssueType,
     JiraIssueStatus,
+    JiraCustomField,
     JiraProject,
     JiraProjectProperties,
 )
@@ -219,7 +220,7 @@ class JiraClient(object):
         message = f"retrieving all issue types from {project.key}: {project.name}"
         types = self.validated_response(url, response, message)
 
-        return JiraIssueType.Set(types).filter(
+        return JiraIssueType.List(types).filter(
             lambda i: i.project_id == project.id
             or (project.style == "classic" and not i.project_id)
         )
@@ -412,3 +413,20 @@ class JiraClient(object):
         properties = self.validated_response(url, response, message)
 
         return JiraProjectProperties(properties)
+
+    def get_custom_field_options(self, field_id: str):
+        url = self.api_url(f"/customField/{field_id}/options")
+        response = self.http.get(url)
+        message = f"retrieving options for custom field: {field_id}"
+        return self.validated_response(url, response, message)
+
+    def get_custom_fields(self, project: JiraProject):
+        url = self.api_url(f"/field")
+        response = self.http.get(url)
+        message = f"retrieving custom fields"
+        fields = self.validated_response(url, response, message)
+
+        return JiraCustomField.List(fields).filter(
+            lambda i: i.project_id == project.id
+            or (project.style == "classic" and not i.project_id)
+        )

@@ -38,6 +38,10 @@ class JiraIssue(Model):
         return self.fields.get("watches") or {}
 
     @property
+    def epic_link(self):
+        return self.fields.get("Epic Link") or self.fields.get("customfield_10009")
+
+    @property
     def watchers_link(self):
         return self.watches.get('self') or ''
 
@@ -120,7 +124,7 @@ class JiraIssue(Model):
 
     @property
     def status_name(self):
-        return self.status.get("name") or ""
+        return self.status.get("name", "")
 
     @property
     def assignee_key(self):
@@ -268,6 +272,43 @@ class JiraIssueLink(Model):
     def target(self):
         value = self.get("outwardIssue") or {}
         return JiraIssue(value)
+
+
+class JiraCustomField(Model):
+    __visible_atttributes__ = ["name", "id"]
+    __id_attributes__ = ["id", "key"]
+
+    @property
+    def id(self):
+        return self.get("id")
+
+    @property
+    def key(self):
+        return self.get("key")
+
+    @property
+    def name(self):
+        return self.get("name")
+
+    @property
+    def description(self):
+        return self.get("description")
+
+    @property
+    def scope(self):
+        return self.get("scope") or {}
+
+    @property
+    def scope_type(self):
+        return self.scope.get("type")
+
+    @property
+    def project(self):
+        return JiraProject(self.scope.get("project") or {})
+
+    @property
+    def project_id(self):
+        return self.project.id
 
 
 class JiraIssueStatus(Model):
