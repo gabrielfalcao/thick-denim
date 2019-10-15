@@ -35,3 +35,9 @@ class ThickDenimConfig(DataBag):
 
     def get_github_token(self):
         return self.traverse("github", "token")
+
+    def get_debug_mode(self):
+        return self.getbool("debug")
+
+    def get_verbose_mode(self):
+        return self.getbool("verbose")

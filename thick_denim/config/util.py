@@ -21,7 +21,7 @@ from .errors import UnsafeConfigMode
 from .errors import NoConfigFound
 
 
-DEFAULT_LOOKUP_PATHS = ("~/.thick_denim.yml", "/etc/thick_denim.yml")
+DEFAULT_LOOKUP_PATHS = ("~/.thick-denim.yml", "/etc/thick-denim.yml")
 
 
 email_regex = re.compile(r"^(?P<username>[\w._+-]+)[@](?P<hostname>[\w_.-]+)")
@@ -47,7 +47,7 @@ def find_first_existing_path(lookup_paths) -> Path:
     potential_paths = ", ".join(map(str, lookup_paths))
 
     raise NoConfigFound(
-        f"Could not find a thick_denim-toolbelt config file in "
+        f"Could not find a thick-denim config file in "
         f"any of the potential paths: {potential_paths}"
     )
 
@@ -69,7 +69,7 @@ def guess_config_path():
 
 
 def get_default_config_filename():
-    return os.getenv("THICK_DENIM_CONFIG_PATH") or "~/.thick_denim.yml"
+    return os.getenv("THICK_DENIM_CONFIG_PATH") or "~/.thick-denim.yml"
 
 
 def write_basic_config_file(destination: str = None) -> Path:

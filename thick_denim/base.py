@@ -1,13 +1,17 @@
 """
 contains generic implementations used across the codebase. Mainly data-models
 """
+import hashlib
 import re
 import json
+import logging
 import pendulum
 import itertools
+from pathlib import Path
 from datetime import datetime
 from typing import List, Callable
 from fnmatch import fnmatch
+from ordered_set import OrderedSet
 
 from thick_denim.ui import UserFriendlyObject
 from humanfriendly.tables import format_robust_table, format_pretty_table
@@ -18,7 +22,16 @@ from thick_denim.meta import (
 )
 from thick_denim.models import DataBag
 
-ITERABLES = (list, tuple, itertools.chain, set, map)
+ITERABLES = (list, tuple, itertools.chain, set, map, filter, OrderedSet)
+
+logger = logging.getLogger(__name__)
+
+
+def try_int(s):
+    try:
+        return int(s)
+    except ValueError:
+        return s
 
 
 def slugify(text: str, separator: str = "-"):
@@ -65,6 +78,22 @@ def validate_model_declaration(cls, name, attrs):
             f"but is {field!r} ({type(field)})"
         )
 
+    id_atttributes = metaclass_declaration_contains_required_attribute(
+        cls, name, attrs, "id_atttributes", str
+    )
+
+    if not isinstance(id_atttributes, (tuple, list)):
+        raise TypeError(f"{target} must be a list of strings")
+
+    for index, field in enumerate(id_atttributes):
+        if isinstance(field, str):
+            continue
+
+        raise TypeError(
+            f"{target}[{index}] should be a string, "
+            f"but is {field!r} ({type(field)})"
+        )
+
 
 class MetaModel(type):
     """metaclass for data models
@@ -86,13 +115,28 @@ class Model(DataBag, metaclass=MetaModel):
     """
 
     __visible_atttributes__: List[str] = []
+    __id_attributes__: List[str] = []
 
     def __init__(self, data: dict = None, *args, **kw):
         if isinstance(data, UserFriendlyObject):
             data = data.serialize()
 
         self.__data__ = data or {}
+        self.__args__ = args
+        self.__kw__ = kw
         self.initialize(*args, **kw)
+
+    def __lt__(self, e) -> bool:
+        return self.sort_key < e.sort_key
+
+    def __lte__(self, e) -> bool:
+        return self.sort_key <= e.sort_key
+
+    def __gt__(self, e) -> bool:
+        return self.sort_key > e.sort_key
+
+    def __gte__(self, e) -> bool:
+        return self.sort_key >= e.sort_key
 
     def __eq__(self, other):
         criteria = [
@@ -101,11 +145,30 @@ class Model(DataBag, metaclass=MetaModel):
         ]
         return all(criteria)
 
+    def __id__(self):
+        return sum(
+            filter(
+                lambda v: isinstance(v, int),
+                [try_int(self.get(k)) for k in self.__id_attributes__],
+            )
+        )
+
+    def __hash__(self):
+        values = dict(
+            [(k, try_int(self.get(k))) for k in self.__id_attributes__]
+        )
+        string = json.dumps(values)
+        return int(hashlib.sha1(bytes(string, "ascii")).hexdigest(), 16)
+
     def initialize(self, *args, **kw):
         pass
 
     def update(self, data: dict):
         self.__data__.update(data)
+
+    @property
+    def sort_key(self):
+        return hash(self)
 
     @property
     def _raw_data(self):
@@ -158,6 +221,10 @@ class Model(DataBag, metaclass=MetaModel):
     def List(cls, *items):
         return ModelList(cls, *items)
 
+    @classmethod
+    def Set(cls, *items):
+        return ModelSet(cls, *items)
+
     def get_table_columns(self):
         return self.__class__.__visible_atttributes__
 
@@ -178,14 +245,8 @@ class Model(DataBag, metaclass=MetaModel):
         return format_pretty_table(rows, columns)
 
 
-class ModelList(list):
-    """Special list subclass that only supports
-    :py:class:`~thick_denim.base.Model` as children and
-    supports filtering by instance attributes by calling
-    :py:meth:`~thick_denim.base.Model.attribute_matches_glob`.
-    """
-
-    def __init__(self, model_class: type, children: List[Model]):
+class IterableCollection:
+    def initialize(self, model_class: type):
         if not isinstance(model_class, type) or not issubclass(
             model_class, Model
         ):
@@ -195,16 +256,12 @@ class ModelList(list):
             )
 
         self.model_class = model_class
-        if not isinstance(children, ITERABLES):
-            raise TypeError(
-                f"ModelList requires the 'children' attribute to be "
-                f"a list, got {children!r} {type(children)} instead"
-            )
 
-        super().__init__(map(model_class, children))
+    def New(self, items, **kw):
+        return self.__class__(self.model_class, sorted(items, **kw))
 
     def sorted(self, **kw):
-        return self.model_class.List(sorted(self, **kw))
+        return self.New(sorted(self, **kw))
 
     def sorted_by(self, attribute: str, **kw):
         return self.sorted(
@@ -222,16 +279,13 @@ class ModelList(list):
         )
 
     def filter(self, check: Callable[[Model], bool]) -> List[Model]:
-        results = []
         for index, model in enumerate(self):
             if not isinstance(model, self.model_class):
                 raise ValueError(
                     f"{self}[{index}] is not an instance of {self.model_class}"
                 )
-            if check(model):
-                results.append(model)
 
-        return self.model_class.List(results)
+        return self.New(list(filter(check, self)))
 
     def get_table_columns(self):
         return self.model_class.__visible_atttributes__
@@ -254,3 +308,65 @@ class ModelList(list):
 
     def to_dict(self) -> List[dict]:
         return [m.to_dict() for m in self]
+
+
+class ModelList(list, IterableCollection):
+    """Special list subclass that only supports
+    :py:class:`~thick_denim.base.Model` as children and
+    supports filtering by instance attributes by calling
+    :py:meth:`~thick_denim.base.Model.attribute_matches_glob`.
+    """
+
+    def __init__(self, model_class: type, children: List[Model]):
+        self.initialize(model_class)
+        if not isinstance(children, ITERABLES):
+            raise TypeError(
+                f"ModelList requires the 'children' attribute to be "
+                f"a list, got {children!r} {type(children)} instead"
+            )
+
+        super().__init__(map(model_class, children))
+
+
+class ModelSet(OrderedSet, IterableCollection):
+    """Special OrderedSet subclass that only supports
+    :py:class:`~thick_denim.base.Model` as children and
+    supports filtering by instance attributes by calling
+    :py:meth:`~thick_denim.base.Model.attribute_matches_glob`.
+    """
+
+    def __init__(self, model_class: type, children: List[Model]):
+        self.initialize(model_class)
+        if not isinstance(children, ITERABLES):
+            raise TypeError(
+                f"ModelList requires the 'children' attribute to be "
+                f"a list, got {children!r} {type(children)} instead"
+            )
+
+        super().__init__(map(model_class, children))
+
+
+def store_models(items: List[Model], filename: str) -> bool:
+    path = Path(".td_cache").joinpath(filename)
+
+    path.parent.mkdir(exist_ok=True, parents=True)
+    with path.open("w") as fd:
+        json.dump(items.to_dict(), fd, indent=2)
+        return True
+
+
+def load_models(filename: str, model_class: Model) -> List[Model]:
+    path = Path(".td_cache").joinpath(filename)
+
+    path.parent.mkdir(exist_ok=True, parents=True)
+    if not path.exists():
+        return None
+
+    with path.open() as fd:
+        try:
+            items = json.load(fd)
+        except json.decoder.JSONDecodeError as e:
+            logger.warning(f"could not parse json from {filename}: {e}")
+            return
+
+        return model_class.List(items)
