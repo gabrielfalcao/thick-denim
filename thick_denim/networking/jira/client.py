@@ -11,13 +11,14 @@ from thick_denim.errors import ThickDenimError
 from thick_denim.config import ThickDenimConfig
 from thick_denim.logs import UIReporter
 from .models import (
+    JiraCustomField,
     JiraIssue,
     JiraIssueChangelog,
     JiraIssueLink,
     JiraIssueLinkType,
-    JiraIssueType,
     JiraIssueStatus,
-    JiraCustomField,
+    JiraIssueTransition,
+    JiraIssueType,
     JiraProject,
     JiraProjectProperties,
 )
@@ -143,7 +144,7 @@ class JiraClient(object):
                 lambda issue: issue.with_updated_field_names(names),
                 JiraIssue.Set(items),
             )
-        ).sorted_by('updated_at', reverse=True)
+        ).sorted_by("updated_at", reverse=True)
 
     def get_issues_by_summary(
         self, summary: str, project: JiraProject = None, max_pages: int = -1
@@ -223,7 +224,9 @@ class JiraClient(object):
 
         url = self.api_url("/issuetype")
         response = self.http.get(url, params=params)
-        message = f"retrieving all issue types from {project.key}: {project.name}"
+        message = (
+            f"retrieving all issue types from {project.key}: {project.name}"
+        )
         types = self.validated_response(response, message)
 
         return JiraIssueType.List(types).filter(
@@ -372,33 +375,28 @@ class JiraClient(object):
                     "content": [
                         {
                             "type": "paragraph",
-                            "content": [
-                                {
-                                    "text": description,
-                                    "type": "text",
-                                }
-                            ],
+                            "content": [{"text": description, "type": "text"}],
                         }
                     ],
-                },
+                }
             },
             "inwardIssue": {"key": source_issue.key},
             "type": {"name": link_type_name},
         }
-        url = self.api_url('/issueLink')
+        url = self.api_url("/issueLink")
         response = self.http.post(
             url,
             data=json.dumps(payload),
-            headers={
-                'Content-Type': 'application/json',
-            }
+            headers={"Content-Type": "application/json"},
         )
-        self.validated_response(response, f'linking issue {source_issue.key} to {target_issue.key}')
+        self.validated_response(
+            response, f"linking issue {source_issue.key} to {target_issue.key}"
+        )
 
-        ui.debug('issue link created, retrieving its data from api')
-        url = response.headers.get('Location')
+        ui.debug("issue link created, retrieving its data from api")
+        url = response.headers.get("Location")
         response = self.http.get(url)
-        data = self.validated_response(response, f'retrieving issue link')
+        data = self.validated_response(response, f"retrieving issue link")
         return JiraIssueLink(data)
 
     def get_issue_statuses(self, project: JiraProject):
@@ -436,3 +434,23 @@ class JiraClient(object):
             lambda i: i.project_id == project.id
             or (project.style == "classic" and not i.project_id)
         )
+
+    def get_issue_transitions(self, issue: JiraIssue):
+        url = self.api_url(f"/issue/{issue.key}/transitions")
+        response = self.http.get(url)
+        message = f"retrieving all issue transitions from {issue.key}: {issue.summary!r}"
+        data = self.validated_response(response, message)
+        transitions = data.get("transitions", [])
+        return JiraIssueTransition.List(transitions)
+
+    def transition_issue(self, issue: JiraIssue, to: JiraIssueTransition):
+        payload = {
+            "transition": {"id": to.id},
+        }
+        response = self.http.post(
+            self.api_url(f'/issue/{issue.key}/transitions'),
+            data=json.dumps(payload),
+            headers={"Content-Type": "application/json"}
+        )
+        self.validated_response(response, f'transitining issue {issue.key} to {to.name} ({to.id})')
+        return self.get_issue(issue.key)

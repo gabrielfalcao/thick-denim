@@ -24,17 +24,17 @@ class JiraIssue(Model):
 
     @property
     def key(self):
-        return self.get("key") or self.extract_key_from_watchers_link() or ''
+        return self.get("key") or self.extract_key_from_watchers_link() or ""
 
     def extract_key_from_watchers_link(self):
         # workaround for classic projects whose response does not
         # include the issue key
         found = re.search(
-            r'/issue/(?P<key>[A-Z][A-Z0-9]+[-]\d+)/watchers',
-            self.watchers_link
+            r"/issue/(?P<key>[A-Z][A-Z0-9]+[-]\d+)/watchers",
+            self.watchers_link,
         )
         if found:
-            return found.group('key')
+            return found.group("key")
 
     @property
     def watches(self):
@@ -42,26 +42,28 @@ class JiraIssue(Model):
 
     @property
     def epic_link(self):
-        return self.fields.get("Epic Link") or self.fields.get("customfield_10009")
+        return self.fields.get("Epic Link") or self.fields.get(
+            "customfield_10009"
+        )
 
     @property
     def url(self):
-        return f'{self.base_url}/browse/{self.key}'
+        return f"{self.base_url}/browse/{self.key}"
 
     @property
     def base_url(self):
         found = re.search(
-            r'^(?P<base_url>https?:[/][/].*atlassian.net/).*',
-            self.watchers_link
+            r"^(?P<base_url>https?:[/][/].*atlassian.net/).*",
+            self.watchers_link,
         )
         if not found:
-            return ''
+            return ""
 
-        return found.group('base_url')
+        return found.group("base_url")
 
     @property
     def watchers_link(self):
-        return self.watches.get('self') or ''
+        return self.watches.get("self") or ""
 
     @property
     def parent(self):
@@ -92,7 +94,7 @@ class JiraIssue(Model):
 
     @property
     def created_day(self):
-        return self.created_at.format('DD/MM/YYYY HH:MM:SS')
+        return self.created_at.format("DD/MM/YYYY HH:MM:SS")
 
     @property
     def created_ago(self):
@@ -110,7 +112,7 @@ class JiraIssue(Model):
 
     @property
     def updated_day(self):
-        return self.updated_at.format('DD/MM/YYYY HH:MM:SS')
+        return self.updated_at.format("DD/MM/YYYY HH:MM:SS")
 
     @property
     def updated_ago(self):
@@ -146,11 +148,11 @@ class JiraIssue(Model):
 
     @property
     def issue_type(self):
-        return self.get("Issue Type") or {}
+        return JiraIssueType(self.get("Issue Type") or {})
 
     @property
     def issue_type_name(self):
-        return self.issue_type.get("name") or ""
+        return self.issue_type.name
 
     @property
     def priority(self):
@@ -162,11 +164,11 @@ class JiraIssue(Model):
 
     @property
     def status(self):
-        return self.get("Status") or {}
+        return JiraIssueStatus(self.get("Status") or {})
 
     @property
     def status_name(self):
-        return self.status.get("name", "")
+        return self.status.name
 
     @property
     def assignee_key(self):
@@ -298,8 +300,16 @@ class JiraIssueLink(Model):
     __id_attributes__ = ["id", "name"]
 
     @property
+    def type(self):
+        return self.get("type") or {}
+
+    @property
     def id(self):
         return self.get("id")
+
+    @property
+    def type_name(self):
+        return self.type.get("name")
 
     @property
     def name(self):
@@ -354,7 +364,13 @@ class JiraCustomField(Model):
 
 
 class JiraIssueStatus(Model):
-    __visible_atttributes__ = ["name", "id", "color", "category_key", "category_id"]
+    __visible_atttributes__ = [
+        "name",
+        "id",
+        "color",
+        "category_key",
+        "category_id",
+    ]
     __id_attributes__ = ["id", "name"]
 
     @property
@@ -370,6 +386,10 @@ class JiraIssueStatus(Model):
         return self.category.get("key")
 
     @property
+    def category_name(self):
+        return self.category.get("name")
+
+    @property
     def category_id(self):
         return self.category.get("id")
 
@@ -383,7 +403,7 @@ class JiraIssueStatus(Model):
 
     @property
     def color(self):
-        return self.category.get('colorName')
+        return self.category.get("colorName")
 
     @property
     def scope(self):
@@ -408,7 +428,40 @@ class JiraProjectProperties(Model):
 
     @property
     def keys(self):
-        return [i.get('key') for i in self.get("keys", [])]
+        return [i.get("key") for i in self.get("keys", [])]
 
     # def get_table_rows(self):
     #     return self.keys
+
+
+class JiraIssueTransition(Model):
+    __visible_atttributes__ = ["name", "id", "category_name", "category_key"]
+    __id_attributes__ = ["id", "name"]
+
+    @property
+    def id(self):
+        return self.get("id")
+
+    @property
+    def fields(self):
+        return self.get("fields") or {}
+
+    @property
+    def to(self):
+        return JiraIssueStatus(self.get("to") or {})
+
+    @property
+    def name(self):
+        return self.to.name
+
+    @property
+    def category_key(self):
+        return self.to.category_key
+
+    @property
+    def category(self):
+        return self.to.category
+
+    @property
+    def category_name(self):
+        return self.to.category_name

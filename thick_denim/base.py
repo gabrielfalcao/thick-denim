@@ -203,10 +203,13 @@ class Model(DataBag, metaclass=MetaModel):
 
     def __ui_attributes__(self):
         return dict(
-            filter(lambda tup: tup[1], [
-                (name, getattr(self, name, self.get(name)))
-                for name in self.__visible_atttributes__
-            ])
+            filter(
+                lambda tup: tup[1],
+                [
+                    (name, getattr(self, name, self.get(name)))
+                    for name in self.__visible_atttributes__
+                ],
+            )
         )
 
     def attribute_matches_glob(

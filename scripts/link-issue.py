@@ -14,6 +14,8 @@ def main(config: ThickDenimConfig, args):
     source_issue = client.get_issue(source_issue_key)
     target_issue = client.get_issue(target_issue_key)
 
-    print(f'This script will link {source_issue.key} {source_issue.summary!r} as cloned by {target_issue.key}: {target_issue.summary!r}')
-    if prompt_for_confirmation('Confirm ?'):
-        client.link_issues(source_issue, target_issue, 'Cloners')
+    print(
+        f"This script will link {source_issue.key} {source_issue.summary!r} as cloned by {target_issue.key}: {target_issue.summary!r}"
+    )
+    if prompt_for_confirmation("Confirm ?"):
+        client.link_issues(source_issue, target_issue, "Cloners")

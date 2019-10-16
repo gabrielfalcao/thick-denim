@@ -8,6 +8,6 @@ def main(config: ThickDenimConfig, args):
     project = client.get_project("TDX")
     properties = client.get_project_properties(project)
     print(project.format_pretty_table())
-    print('\nproperties:\n')
+    print("\nproperties:\n")
     for key in properties.keys:
-        print(f'\t{key}')
+        print(f"\t{key}")

@@ -28,11 +28,11 @@ class by:
 
     @staticmethod
     def not_done_yet(issue: JiraIssue):
-        return issue.status_name != 'Done'
+        return issue.status_name != "Done"
 
     @staticmethod
     def not_an_epic(issue: JiraIssue):
-        return issue.issue_type_name != 'Epic'
+        return issue.issue_type_name != "Epic"
 
 
 def get_matching_issue_type(
@@ -61,68 +61,65 @@ def get_matching_issue_type(
 
 
 def transfer_issues_without_epic_to_another_project(
-        client, source_project, target_project, issue_types,
+    client, source_project, target_project, issue_types
 ):
-    issues_without_epic = client.get_issues_from_project(source_project).filter(
-        lambda issue: not issue.parent
-    ).filter(
-        by.updated_within_last_2_months
-    ).filter(
-        by.not_an_epic
-    ).sorted_by(
-        'created_at'
-    ).sorted_by(
-        'updated_at'
+    issues_without_epic = (
+        client.get_issues_from_project(source_project)
+        .filter(lambda issue: not issue.parent)
+        .filter(by.updated_within_last_2_months)
+        .filter(by.not_an_epic)
+        .sorted_by("created_at")
+        .sorted_by("updated_at")
     )
     for source_issue in issues_without_epic:
-        if source_issue.status_name.lower() == 'done':
-            print(f'\033[1;30mskipping issue {source_issue.key} {source_issue.summary!r} because has status {source_issue.status_name}\033[0m')
+        if source_issue.status_name.lower() == "done":
+            print(
+                f"\033[1;30mskipping issue {source_issue.key} {source_issue.summary!r} because has status {source_issue.status_name}\033[0m"
+            )
             continue
 
         if isinstance(source_issue.description, dict):
             new_description = source_issue.description.copy()
         else:
-            new_description = {
-                'content': [],
-                'type': 'doc',
-                'version': 1
-            }
+            new_description = {"content": [], "type": "doc", "version": 1}
 
-        new_description['content'].extend([
-            {'type': 'rule'},
-            {
-                'content': [{
-                    'text': f'Epic: No Epic',
-                    'type': 'text'
-                }],
-                'type': 'paragraph'
-            },
-            {
-                'type': 'paragraph',
-                'content': [
-                    {
-                        'text': f'Cloned from {source_issue.key}',
-                        'type': 'text'
-                    }, {
-                        'marks': [{
-                            'attrs': {
-                                'href': source_issue.url,
-                            },
-                            'type': 'link'
-                        }],
-                        'text': source_issue.key,
-                        'type': 'text'
-                    }
-                ],
-            },
-            {
-                'content': [{
-                    'text': f'Original status: {source_issue.status_name}',
-                    'type': 'text'
-                }],
-                'type': 'paragraph'
-            },
-        ])
+        new_description["content"].extend(
+            [
+                {"type": "rule"},
+                {
+                    "content": [{"text": f"Epic: No Epic", "type": "text"}],
+                    "type": "paragraph",
+                },
+                {
+                    "type": "paragraph",
+                    "content": [
+                        {
+                            "text": f"Cloned from {source_issue.key}",
+                            "type": "text",
+                        },
+                        {
+                            "marks": [
+                                {
+                                    "attrs": {"href": source_issue.url},
+                                    "type": "link",
+                                }
+                            ],
+                            "text": source_issue.key,
+                            "type": "text",
+                        },
+                    ],
+                },
+                {
+                    "content": [
+                        {
+                            "text": f"Original status: {source_issue.status_name}",
+                            "type": "text",
+                        }
+                    ],
+                    "type": "paragraph",
+                },
+            ]
+        )
         fields = {"description": new_description}
 
         fields.update(newstore_apps_fields)
@@ -143,13 +140,17 @@ def transfer_issues_without_epic_to_another_project(
         target_issue = candidate_issues and candidate_issues[0]
 
         if target_issue:
-            print(f"\033[1;34mIssue already exists: {target_issue.key} {target_issue.summary!r}\033[0m")
+            print(
+                f"\033[1;34mIssue already exists: {target_issue.key} {target_issue.summary!r}\033[0m"
+            )
         else:
             target_task_type = get_matching_issue_type(
                 "Tech Story", issue_types
             )
             print(source_issue.format_robust_table())
-            if not prompt_for_confirmation(f'Do you want to transfer \033[1;32m{source_issue.key}\033[0m to {target_project.name} ({target_project.key})?'):
+            if not prompt_for_confirmation(
+                f"Do you want to transfer \033[1;32m{source_issue.key}\033[0m to {target_project.name} ({target_project.key})?"
+            ):
                 continue
 
             try:
@@ -170,13 +171,17 @@ def transfer_issues_without_epic_to_another_project(
                     f"\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
                 )
 
-        linked_summaries = [link.target.summary for link in target_issue.issue_links]
+        linked_summaries = [
+            link.target.summary for link in target_issue.issue_links
+        ]
         if source_issue.summary not in linked_summaries:
-            print(f'\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}')
+            print(
+                f"\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}"
+            )
             client.link_issues(
                 source_issue,
                 target_issue,
-                f'ported from {source_project.key} through a script',
+                f"ported from {source_project.key} through a script",
             )
 
 
@@ -193,10 +198,10 @@ newstore_apps_fields = {
         "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/10315",
         "value": "#infrastructure",
     },
-    'customfield_13900': {
-        'id': '14003',
-        'self': 'https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14003',
-        'value': 'S'
+    "customfield_13900": {
+        "id": "14003",
+        "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14003",
+        "value": "S",
     },
 }
 
@@ -215,10 +220,12 @@ def main(config: ThickDenimConfig, args):
         )
         raise SystemExit(1)
 
-    print(f"beginning to port issues to project {target_project.name} ({target_project.key})")
+    print(
+        f"beginning to port issues to project {target_project.name} ({target_project.key})"
+    )
     try:
         transfer_issues_without_epic_to_another_project(
-            client, source_project, target_project, issue_types,
+            client, source_project, target_project, issue_types
         )
     except KeyboardInterrupt:
         print("\rUser cancelled (Control-C)")

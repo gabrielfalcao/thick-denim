@@ -10,6 +10,8 @@ def main(config: ThickDenimConfig, args):
         raise SystemExit(1)
 
     key = args[0]
-    options = client.get_custom_field_options('10009')
+    options = client.get_custom_field_options("10009")
     print(json.dumps(options))
-    import ipdb;ipdb.set_trace()
+    import ipdb
+
+    ipdb.set_trace()

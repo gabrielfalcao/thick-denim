@@ -28,7 +28,7 @@ class by:
 
     @staticmethod
     def not_done_yet(issue: JiraIssue):
-        return issue.status_name != 'Done'
+        return issue.status_name != "Done"
 
 
 def get_source_issues_by_epic(client: JiraClient, source_project: JiraProject):
@@ -114,13 +114,15 @@ def get_matching_issue_type(
 
 
 def transfer_epics_and_subtasks_to_another_project(
-        client, source_project, target_project, TASKS_BY_EPIC, issue_types,
+    client, source_project, target_project, TASKS_BY_EPIC, issue_types
 ):
     epics = JiraIssue.List(list(TASKS_BY_EPIC.keys()))
 
     for epic in epics:
-        if epic.status_name.lower() == 'done':
-            print(f'\033[1;30mskipping epic {epic.key} {epic.summary!r} because has status {epic.status_name}')
+        if epic.status_name.lower() == "done":
+            print(
+                f"\033[1;30mskipping epic {epic.key} {epic.summary!r} because has status {epic.status_name}"
+            )
             continue
 
         candidate_epics = client.get_issues_by_summary(
@@ -128,7 +130,9 @@ def transfer_epics_and_subtasks_to_another_project(
         ).filter_by("issue_type_name", "Epic")
         if candidate_epics:
             target_epic = candidate_epics[0]
-            print(f"\033[1;34mEpic already exists on target: {target_epic.key} {target_epic.summary!r}\033[0m")
+            print(
+                f"\033[1;34mEpic already exists on target: {target_epic.key} {target_epic.summary!r}\033[0m"
+            )
 
         else:
             print(
@@ -137,32 +141,31 @@ def transfer_epics_and_subtasks_to_another_project(
             if isinstance(epic.description, dict):
                 new_description = epic.description.copy()
             else:
-                new_description = {
-                    'content': [],
-                    'type': 'doc',
-                    'version': 1
-                }
+                new_description = {"content": [], "type": "doc", "version": 1}
 
-            new_description['content'].extend([
-                {'type': 'rule'},
-                {
-                    'content': [{
-                        'text': f'Cloned from {epic.key}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-                {
-                    'content': [{
-                        'text': f'Original status: {epic.status_name}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-            ])
+            new_description["content"].extend(
+                [
+                    {"type": "rule"},
+                    {
+                        "content": [
+                            {"text": f"Cloned from {epic.key}", "type": "text"}
+                        ],
+                        "type": "paragraph",
+                    },
+                    {
+                        "content": [
+                            {
+                                "text": f"Original status: {epic.status_name}",
+                                "type": "text",
+                            }
+                        ],
+                        "type": "paragraph",
+                    },
+                ]
+            )
             fields = {
                 "description": new_description,
-                "customfield_10009": epic.summary
+                "customfield_10009": epic.summary,
             }
 
             for important_key in ["attachment", "components"]:
@@ -190,57 +193,69 @@ def transfer_epics_and_subtasks_to_another_project(
                 fields=fields,
             )
             if target_epic:
-                print(f"\033[1;32mcreated Epic {target_epic.key}: {target_epic.summary}\033[0m")
-                print(f'\033[1;36mcreating link exists between epics {epic.key} and {target_epic.key}')
+                print(
+                    f"\033[1;32mcreated Epic {target_epic.key}: {target_epic.summary}\033[0m"
+                )
+                print(
+                    f"\033[1;36mcreating link exists between epics {epic.key} and {target_epic.key}"
+                )
                 client.link_issues(
                     epic,
                     target_epic,
-                    f'ported from {source_project.key} through a script',
+                    f"ported from {source_project.key} through a script",
                 )
 
             else:
-                raise ThickDenimError(f'failed to create epic {new_epic_summary!r}')
+                raise ThickDenimError(
+                    f"failed to create epic {new_epic_summary!r}"
+                )
 
         for source_issue in TASKS_BY_EPIC[epic]:
-            if source_issue.status_name.lower() == 'done':
-                print(f'\033[1;30mskipping issue {source_issue.key} {source_issue.summary!r} because has status {source_issue.status_name}')
+            if source_issue.status_name.lower() == "done":
+                print(
+                    f"\033[1;30mskipping issue {source_issue.key} {source_issue.summary!r} because has status {source_issue.status_name}"
+                )
                 continue
 
             if isinstance(source_issue.description, dict):
                 new_description = source_issue.description.copy()
             else:
-                new_description = {
-                    'content': [],
-                    'type': 'doc',
-                    'version': 1
-                }
+                new_description = {"content": [], "type": "doc", "version": 1}
 
-            new_description['content'].extend([
-                {'type': 'rule'},
-                {
-                    'content': [{
-                        'text': f'Epic: {target_epic.key}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-                {
-                    'content': [{
-                        'text': f'Cloned from {source_issue.key}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-                {
-                    'content': [{
-                        'text': f'Original status: {source_issue.status_name}',
-                        'type': 'text'
-                    }],
-                    'type': 'paragraph'
-                },
-            ])
+            new_description["content"].extend(
+                [
+                    {"type": "rule"},
+                    {
+                        "content": [
+                            {
+                                "text": f"Epic: {target_epic.key}",
+                                "type": "text",
+                            }
+                        ],
+                        "type": "paragraph",
+                    },
+                    {
+                        "content": [
+                            {
+                                "text": f"Cloned from {source_issue.key}",
+                                "type": "text",
+                            }
+                        ],
+                        "type": "paragraph",
+                    },
+                    {
+                        "content": [
+                            {
+                                "text": f"Original status: {source_issue.status_name}",
+                                "type": "text",
+                            }
+                        ],
+                        "type": "paragraph",
+                    },
+                ]
+            )
             fields = {"description": new_description}
-            if target_project.style == 'classic':
+            if target_project.style == "classic":
                 fields["customfield_10008"] = target_epic.key
 
             fields.update(newstore_apps_fields)
@@ -261,7 +276,9 @@ def transfer_epics_and_subtasks_to_another_project(
             target_issue = candidate_issues and candidate_issues[0]
 
             if target_issue:
-                print(f"\033[1;34mIssue already exists: {target_issue.key} {target_issue.summary!r}\033[0m")
+                print(
+                    f"\033[1;34mIssue already exists: {target_issue.key} {target_issue.summary!r}\033[0m"
+                )
             else:
                 print(
                     f'\033[1;33mtransfering {source_issue.key} "{source_issue.summary}" to {target_project.name}\033[0m'
@@ -290,13 +307,17 @@ def transfer_epics_and_subtasks_to_another_project(
                         f"\033[1;32mtransfered task {target_issue.key}: {target_issue.summary}\033[0m"
                     )
 
-            linked_summaries = [link.target.summary for link in target_issue.issue_links]
+            linked_summaries = [
+                link.target.summary for link in target_issue.issue_links
+            ]
             if source_issue.summary not in linked_summaries:
-                print(f'\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}')
+                print(
+                    f"\033[1;36mcreating link exists between issues {source_issue.key} and {target_issue.key}"
+                )
                 client.link_issues(
                     source_issue,
                     target_issue,
-                    f'ported from {source_project.key} through a script',
+                    f"ported from {source_project.key} through a script",
                 )
 
 
@@ -313,10 +334,10 @@ newstore_apps_fields = {
         "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/10315",
         "value": "#infrastructure",
     },
-    'customfield_13900': {
-        'id': '14003',
-        'self': 'https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14003',
-        'value': 'S'
+    "customfield_13900": {
+        "id": "14003",
+        "self": "https://goodscloud.atlassian.net/rest/api/3/customFieldOption/14003",
+        "value": "S",
     },
 }
 
@@ -337,10 +358,12 @@ def main(config: ThickDenimConfig, args):
 
     TASKS_BY_EPIC = get_source_issues_by_epic(client, source_project)
 
-    print(f"beginning to port issues to project {target_project.name} ({target_project.key})")
+    print(
+        f"beginning to port issues to project {target_project.name} ({target_project.key})"
+    )
     try:
         transfer_epics_and_subtasks_to_another_project(
-            client, source_project, target_project, TASKS_BY_EPIC, issue_types,
+            client, source_project, target_project, TASKS_BY_EPIC, issue_types
         )
     except KeyboardInterrupt:
         print("\rUser cancelled (Control-C)")
