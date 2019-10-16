@@ -115,6 +115,10 @@ class JiraClient(object):
         return issue
 
     def get_issues_from_project(self, id_or_key, max_pages: int = -1):
+        if isinstance(id_or_key, JiraProject):
+            project = id_or_key
+            id_or_key = project.id or project.key
+
         return self.get_issues_with_jql(f"project = {id_or_key}")
 
     def get_issues_with_jql(self, jql: str, max_pages: int = -1):

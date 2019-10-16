@@ -13,6 +13,9 @@ class JiraIssue(Model):
         "assignee_key",
         "priority_name",
         "status_name",
+        "created",
+        "updated",
+        "url",
     ]
 
     @property
@@ -21,7 +24,7 @@ class JiraIssue(Model):
 
     @property
     def key(self):
-        return self.get("key") or self.extract_key_from_watchers_link()
+        return self.get("key") or self.extract_key_from_watchers_link() or ''
 
     def extract_key_from_watchers_link(self):
         # workaround for classic projects whose response does not
@@ -40,6 +43,21 @@ class JiraIssue(Model):
     @property
     def epic_link(self):
         return self.fields.get("Epic Link") or self.fields.get("customfield_10009")
+
+    @property
+    def url(self):
+        return f'{self.base_url}/browse/{self.key}'
+
+    @property
+    def base_url(self):
+        found = re.search(
+            r'^(?P<base_url>https?:[/][/].*atlassian.net/).*',
+            self.watchers_link
+        )
+        if not found:
+            return ''
+
+        return found.group('base_url')
 
     @property
     def watchers_link(self):
@@ -73,10 +91,34 @@ class JiraIssue(Model):
             return pendulum.parse(value)
 
     @property
+    def created_day(self):
+        return self.created_at.format('DD/MM/YYYY HH:MM:SS')
+
+    @property
+    def created_ago(self):
+        return self.created_at and self.created_at.diff_for_humans()
+
+    @property
+    def created(self):
+        return f"{self.created_ago} ({self.created_day})"
+
+    @property
     def updated_at(self):
         value = self.fields.get("updated") or self.get("Updated")
         if value:
             return pendulum.parse(value)
+
+    @property
+    def updated_day(self):
+        return self.updated_at.format('DD/MM/YYYY HH:MM:SS')
+
+    @property
+    def updated_ago(self):
+        return self.updated_at and self.updated_at.diff_for_humans()
+
+    @property
+    def updated(self):
+        return f"{self.updated_ago} ({self.updated_day})"
 
     @property
     def fields(self):
