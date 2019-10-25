@@ -9,6 +9,4 @@ def main(config: ThickDenimConfig, args):
     project = client.get_project("NA")
     options = client.get_custom_fields(project)
 
-    import ipdb
-
-    ipdb.set_trace()
+    print(options.format_pretty_table())

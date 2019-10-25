@@ -44,11 +44,24 @@ class JiraClientHttpException(JiraClientException):
     def __init__(self, response, data, status, message):
         url = response.request.url
         method = response.request.method
-        message = f"{message}.\n{status} for url {method} {url}:\n\n{data}\n"
+        try:
+            data = json.loads(data)
+        except Exception:
+            pass
+
         if isinstance(data, dict):
-            self.errors = data.get("errors") or {}
+            self.errors = (
+                data.get("errorMessages") or data.get("errors") or data
+            )
         else:
-            self.errors = {"raw": data}
+            self.errors = data
+
+        if isinstance(self.errors, (tuple, list)):
+            self.error_messages = "\n".join(self.errors)
+        else:
+            self.error_messages = self.errors
+
+        message = f"\033[1;32m{message}.\n{status} for url {method} {url}:\n\n\033[1;31m{self.error_messages}\033[0m"
 
         super().__init__(message)
 
@@ -87,7 +100,11 @@ class JiraClient(object):
         self.http = requests.Session()
         self.http.auth = (self.jira_email, self.jira_token)
         self.http.headers.update(
-            {"Bearer": f"{self.jira_token}", "Accept": "application/json"}
+            {
+                "Bearer": f"{self.jira_token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            }
         )
 
     def api_url(self, path: str):
@@ -115,12 +132,18 @@ class JiraClient(object):
 
         return issue
 
-    def get_issues_from_project(self, id_or_key, max_pages: int = -1):
+    def get_issues_from_project(
+        self, id_or_key, devteam: str = None, max_pages: int = -1
+    ):
         if isinstance(id_or_key, JiraProject):
             project = id_or_key
             id_or_key = project.id or project.key
 
-        return self.get_issues_with_jql(f"project = {id_or_key}")
+        parts = [f"project = {id_or_key}"]
+        if devteam:
+            parts.append(f'%22Dev%20Team%22% = "{devteam}"')
+
+        return self.get_issues_with_jql(" AND ".join(parts))
 
     def get_issues_with_jql(self, jql: str, max_pages: int = -1):
         # https://developer.atlassian.com/cloud/jira/platform/rest/v3/#api-rest-api-3-search-post
@@ -134,7 +157,7 @@ class JiraClient(object):
         }
         items, names = self.request_with_pages(
             "/search",
-            f"retrieving issues for jql: {jql}",
+            f"retrieving issues for jql: \033[1;33m{jql!r}\033[0m",
             max_pages=max_pages,
             params=params,
             items_key="issues",
@@ -444,13 +467,13 @@ class JiraClient(object):
         return JiraIssueTransition.List(transitions)
 
     def transition_issue(self, issue: JiraIssue, to: JiraIssueTransition):
-        payload = {
-            "transition": {"id": to.id},
-        }
+        payload = {"transition": {"id": to.id}}
         response = self.http.post(
-            self.api_url(f'/issue/{issue.key}/transitions'),
+            self.api_url(f"/issue/{issue.key}/transitions"),
             data=json.dumps(payload),
-            headers={"Content-Type": "application/json"}
+            headers={"Content-Type": "application/json"},
         )
-        self.validated_response(response, f'transitining issue {issue.key} to {to.name} ({to.id})')
+        self.validated_response(
+            response, f"transitining issue {issue.key} to {to.name} ({to.id})"
+        )
         return self.get_issue(issue.key)

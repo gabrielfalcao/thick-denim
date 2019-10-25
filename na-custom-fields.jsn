@@ -1,0 +1,135 @@
+------------------------------------------------------------------
+| name                           | id                            |
+------------------------------------------------------------------
+| Customer                       | customfield_14171             |
+| Test_Configuration Value       | customfield_13502             |
+| Test_Configuration Key         | customfield_13501             |
+| Test_Service                   | customfield_13500             |
+| Goals                          | customfield_13702             |
+| Confluence Page                | customfield_12600             |
+| iOS Version                    | customfield_11904             |
+| Flagged                        | customfield_10003             |
+| Stage                          | customfield_12300             |
+| Due date                       | duedate                       |
+| Σ Original Estimate            | aggregatetimeoriginalestimate |
+| Description                    | description                   |
+| Reporter                       | reporter                      |
+| Fix versions                   | fixVersions                   |
+| Status                         | status                        |
+| Parking Lot                    | customfield_14153             |
+| Sub-tasks                      | subtasks                      |
+| Deployment State               | customfield_13504             |
+| Browser Version                | customfield_11907             |
+| Expected Outcome               | customfield_11901             |
+| Department                     | customfield_11600             |
+| Epic/Theme                     | customfield_10004             |
+| Σ Remaining Estimate           | aggregatetimeestimate         |
+| Environment                    | environment                   |
+| Organizations                  | customfield_12800             |
+| Committed Due Date             | customfield_13000             |
+| Remaining Estimate             | timeestimate                  |
+| Images                         | thumbnail                     |
+| Epic Color                     | customfield_10011             |
+| Epic Link                      | customfield_10008             |
+| Parent Link                    | customfield_12000             |
+| Satisfaction                   | customfield_14177             |
+| Importance                     | customfield_12701             |
+| Assignee                       | assignee                      |
+| Context                        | customfield_10600             |
+| Σ Time Spent                   | aggregatetimespent            |
+| Created                        | created                       |
+| Squad Team                     | customfield_12400             |
+| Hypothesis                     | customfield_13701             |
+| Σ Progress                     | aggregateprogress             |
+| Create Opportunity             | customfield_12101             |
+| Status Category                | statusCategory                |
+| config-scope                   | customfield_14149             |
+| Security Level                 | security                      |
+| Impact on Revenue/Customer     | customfield_14188             |
+| Development                    | customfield_12200             |
+| Story Points                   | customfield_10005             |
+| Steps to reproduce             | customfield_11900             |
+| Time Spent                     | timespent                     |
+| productboard URL               | customfield_12900             |
+| Question Subject               | customfield_11800             |
+| Opportunity Link               | customfield_14152             |
+| ETA                            | customfield_13801             |
+| Linked Issues                  | issuelinks                    |
+| Work Ratio                     | workratio                     |
+| Actual Outcome                 | customfield_11902             |
+| Start date                     | customfield_14144             |
+| Progress                       | customfield_10200             |
+| Browser                        | customfield_11906             |
+| Parked until                   | customfield_11500             |
+| Tools                          | customfield_13704             |
+| Lambda Version                 | customfield_13400             |
+| Baseline end date              | customfield_14147             |
+| Resolution                     | resolution                    |
+| Estimation                     | customfield_10500             |
+| Story Points Achieved          | customfield_14187             |
+| Dev Team                       | customfield_10602             |
+| Urgency Level                  | customfield_11801             |
+| T-shirt Estimation             | customfield_13900             |
+| Experts                        | customfield_14000             |
+| Story point estimate           | customfield_14155             |
+| End date                       | customfield_14145             |
+| Epic Status                    | customfield_10010             |
+| Team                           | customfield_12500             |
+| Tenant                         | customfield_12301             |
+| Adidas stakeholders            | customfield_11200             |
+| Summary                        | summary                       |
+| Customer Summary               | customfield_13200             |
+| Request Type                   | customfield_13300             |
+| Progress                       | progress                      |
+| Rank                           | customfield_10012             |
+| Watchers                       | watches                       |
+| Start date                     | customfield_14150             |
+| Complexity                     | customfield_12700             |
+| External issue URL             | customfield_10300             |
+| Checklist Status               | customfield_13600             |
+| [CHART] Date of First Response | customfield_10000             |
+| Time tracking                  | timetracking                  |
+| Request participants           | customfield_14154             |
+| Last Viewed                    | lastViewed                    |
+| Priority                       | priority                      |
+| Attachment                     | attachment                    |
+| Sprint                         | customfield_10007             |
+| Updated                        | updated                       |
+| Approvals                      | customfield_11100             |
+| Feature estimation             | customfield_12801             |
+| Epic Name                      | customfield_10009             |
+| Resolved                       | resolutiondate                |
+| Application                    | customfield_10604             |
+| Frequency                      | customfield_14189             |
+| Observations                   | customfield_13700             |
+| Baseline start date            | customfield_14146             |
+| [CHART] Time in Status         | customfield_10001             |
+| Project                        | project                       |
+| Issue Type                     | issuetype                     |
+| Opportunity Name               | customfield_14151             |
+| Focus Area                     | customfield_12702             |
+| Status Category Changed        | statuscategorychangedate      |
+| Business Value                 | customfield_10006             |
+| Forecasted Sprint              | customfield_14178             |
+| Task progress                  | customfield_14143             |
+| Salesforce Case                | customfield_14172             |
+| Labels                         | labels                        |
+| Issue color                    | customfield_14169             |
+| Metrics                        | customfield_13703             |
+| Key                            | issuekey                      |
+| Company Goals                  | customfield_14148             |
+| Service Class                  | customfield_10700             |
+| Storymap Activity              | customfield_11000             |
+| Log Work                       | worklog                       |
+| Total Story Points             | customfield_14186             |
+| External issue ID              | customfield_10301             |
+| Components                     | components                    |
+| iPhone Version                 | customfield_11905             |
+| Affects versions               | versions                      |
+| Creator                        | creator                       |
+| Support Severity               | customfield_13100             |
+| Original Estimate              | timeoriginalestimate          |
+| Comment                        | comment                       |
+| Story Board Link               | customfield_10900             |
+| Demand Type                    | customfield_11301             |
+------------------------------------------------------------------

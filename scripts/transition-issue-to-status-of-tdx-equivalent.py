@@ -40,6 +40,7 @@ def translate_status_from_tdx(name):
     return mapping.get(name, name)
 
 
+
 def transition_issue_to_status_of_tdx_equivalent(client: JiraClient, issue: JiraIssue):
     transitions = client.get_issue_transitions(issue)
     for clone_link in issue.issue_links.filter_by('type_name', 'Cloners'):
@@ -48,6 +49,7 @@ def transition_issue_to_status_of_tdx_equivalent(client: JiraClient, issue: Jira
             print(f'skipping issue that does not originate from TDX: {original.key}')
             continue
 
+        while not issue.status_name
         candidate_transitions =  transitions.filter_by(
             'name',
             translate_status_from_tdx(original.status_name),

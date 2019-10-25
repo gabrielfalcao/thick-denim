@@ -27,11 +27,53 @@ ITERABLES = (list, tuple, itertools.chain, set, map, filter, OrderedSet)
 logger = logging.getLogger(__name__)
 
 
+field_list_kv_regex = re.compile(r"(?P<key>\w+)=[{]?(?P<value>[^,}]+)[}]?")
+
+
+def unwrap_braces(value):
+    if value[0] == "{" and value[-1] == "}":
+        return value[1:-1]
+    return value
+
+
+def extract_field_properties(data: str) -> dict:
+    data = unwrap_braces(data)
+    found = field_list_kv_regex.findall(data)
+    if not found:
+        return try_json(data)
+
+    result = {}
+    for key, value in found:
+
+        children = extract_field_properties(value)
+        if isinstance(children, dict):
+            result[key] = children
+        else:
+            result[key] = value
+
+    return result
+
+
 def try_int(s):
     try:
         return int(s)
     except ValueError:
         return s
+
+
+def try_json(s):
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        return s
+
+
+def extract_json_from_field(value: str):
+    found = re.search(r"json=[{](?P<json>.+?)[}]", value)
+    if found:
+        return try_json(found.group("json"))
+
+    return value
 
 
 def slugify(text: str, separator: str = "-"):

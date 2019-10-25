@@ -7,10 +7,7 @@ def is_builtin_class_except(target: type, except_names: List[str]) -> bool:
     builtin metaclasses.
     """
 
-    return (
-        target.__module__.startswith("newstore.")
-        and target.__name__ in except_names
-    )
+    return target.__name__ in except_names
 
 
 def metaclass_declaration_contains_required_attribute(

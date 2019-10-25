@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import pendulum
-from thick_denim.base import Model
+from thick_denim.base import Model, extract_json_from_field
 
 
 class JiraIssue(Model):
@@ -184,6 +184,19 @@ class JiraIssue(Model):
             self[humanized_name] = value
 
         return self
+
+    @property
+    def development(self):
+        value = self.fields.get("customfield_12200")
+        return extract_json_from_field(value)
+
+    @property
+    def devteam_meta(self):
+        return self.fields.get("customfield_10602", {})
+
+    @property
+    def devteam(self):
+        return self.devteam_meta.get("value")
 
 
 class JiraProject(Model):
