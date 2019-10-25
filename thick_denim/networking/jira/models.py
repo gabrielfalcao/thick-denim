@@ -2,6 +2,7 @@
 import re
 import pendulum
 from thick_denim.base import Model, extract_json_from_field
+from thick_denim.jira.propertylang import parse_properties
 
 
 class JiraIssue(Model):
@@ -188,7 +189,7 @@ class JiraIssue(Model):
     @property
     def development(self):
         value = self.fields.get("customfield_12200")
-        return extract_json_from_field(value)
+        return parse_properties(value)
 
     @property
     def devteam_meta(self):

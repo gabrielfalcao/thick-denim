@@ -1,8 +1,12 @@
 # -*- coding: utf-8; -*-
-import re
-from .base import Token, BaseParser, TOKENS
+from .base import Token, BaseParser
+from . import ast
 # {user={email="gabriel@nacaolivre.org", username=gabrielfalcao},
 #  auth_token=bUpyTGNTUHJ4ZE96UHw8d3cK, meta={repos=10}}
+
+
+def strip_quotes(string: str):
+    return string.strip('"')
 
 
 class TOKEN_EOF(Token):
@@ -42,9 +46,6 @@ class Lexer(BaseParser):
         super(Lexer, self).__init__(stream)
         self.tokens = []
 
-    def value(self):
-        return self.stream[self.start:self.position]
-
     def emit(self, token, strip=False):
         value = self.value()
         if strip:
@@ -65,18 +66,22 @@ class Lexer(BaseParser):
     def lex_obj(self):
         while True:
             cursor = self.proceed()
-            value = self.value()
             if cursor is None:  # EOF
                 break
             elif cursor == "{":
                 self.emit_s(TOKEN_OBJECT_START)
                 self.proceed()
+            elif cursor in ('"', "'"):
+                self.reset()
+                self.lex_value()
+                continue
+
             elif cursor == "}":
                 self.retreat()
                 self.emit_s(TOKEN_VALUE)
                 self.proceed()
                 self.emit_s(TOKEN_OBJECT_END)
-            elif cursor == "=":
+            elif cursor in ("=", ":"):
                 self.retreat()
                 self.emit_s(TOKEN_KEY)
                 self.proceed()
@@ -89,29 +94,7 @@ class Lexer(BaseParser):
                     self.proceed()
                 self.emit_s(TOKEN_SEPARATOR)
 
-            # elif cursor == "}":
-            #     self.reset()
-            #     self.emit_s(TOKEN_VALUE)
-            #     self.proceed()
-            #     self.reset()
-            #     return self.lex_obj
-            # elif cursor == "=":
-            #     self.retreat()
-            #     self.emit_s(TOKEN_KEY)
-            #     self.proceed()
-            #     self.reset()
-
-            # elif cursor == ",":
-            #     cursor = self.proceed()
-            #     if cursor == " ":
-            #         self.emit_s(TOKEN_KEY)
-            #         self.proceed()
-            #     else:
-            #         self.retreat()
-            #         self.emit_s(TOKEN_VALUE)
-            #         return self.lex_value
-
-        self.emit_s(TOKEN_OBJECT)
+        self.emit_s(TOKEN_KEY)
         self.emit(TOKEN_EOF)
         return None
 
@@ -120,38 +103,58 @@ class Lexer(BaseParser):
             cursor = self.proceed()
             if cursor is None:  # EOF
                 break
-            elif cursor == "=":
+            elif cursor == '"':
+                self.retreat()
+                self.emit_s(TOKEN_VALUE)
                 self.proceed()
                 self.reset()
-                continue
-            elif cursor == "}":
-                self.retreat()
-                return self.lex_obj
-            elif cursor == "{":
-                self.retreat()
-                self.emit(TOKEN_VALUE)
-                self.proceed()
-                self.ignore()
-                return self.lex_obj
-
-        self.emit_s(TOKEN_VALUE)
-        return self.lex_obj
-
-    def lex_key(self):
-        while True:
-            cursor = self.proceed()
-            if cursor is None:  # EOF
                 break
 
-            elif cursor == "}":
-                self.retreat()
-                return self.lex_obj
-            elif cursor == "{":
-                self.retreat()
-                self.emit(TOKEN_VALUE)
-                self.proceed()
-                self.ignore()
-                return self.lex_obj
+        return None
 
-        self.emit_s(TOKEN_VALUE)
-        return self.lex_obj
+
+class Parser(BaseParser):
+    def __init__(self, stream):
+        super(Parser, self).__init__(stream)
+        self.data = None
+        self.stack = []
+        self.keys = []
+
+    def run(self):
+        state = self.parse_obj
+        while state:
+            state = state()
+        return self.data
+
+    def parse_obj(self):
+        token = self.peek()
+        while not token.is_a(TOKEN_EOF):
+            token = self.proceed()
+            if token is None:
+                break
+
+            if token.is_a(TOKEN_OBJECT_START):
+                self.stack.append({})
+                continue
+
+            elif token.is_a(TOKEN_KEY):
+                key = strip_quotes(token.value)
+                self.keys.append(key)
+                continue
+
+            elif token.is_a(TOKEN_VALUE):
+                self.keys.pop(-1)
+                self.stack[-1][key] = strip_quotes(token.value)
+                continue
+
+            elif token.is_a(TOKEN_SEPARATOR):
+                continue
+            elif token.is_a(TOKEN_OBJECT_END):
+                if self.keys:
+                    key = self.keys.pop(-1)
+                    data = self.stack.pop(-1)
+                    self.stack.append({key: data})
+                continue
+
+        self.data = self.stack[-1]
+        return None

@@ -58,7 +58,7 @@ class Token(metaclass=MetaToken):
             self.value == other.value
         )
 
-    def is_of_type(self, ttype: type):
+    def is_a(self, ttype: type):
         return isinstance(self, ttype)
 
 
@@ -108,3 +108,6 @@ class BaseParser(object):
             return True
         self.retreat()
         return False
+
+    def value(self):
+        return self.stream[self.start:self.position]
