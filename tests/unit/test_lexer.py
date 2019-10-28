@@ -17,20 +17,38 @@ def test_lex_test_eof():
     parser.tokens.should.equal([lexer.TOKEN_EOF("")])
 
 
-def test_lex_text():
-    "Lexer.run() should parse an dummy string"
+def test_lex_empty_obj():
+    "Lexer.run() should parse {}"
 
-    # Given a lexer that takes some text as input string
-    parser = Lexer("some text")
+    # Given a lexer that takes some text as input an empty object
+    parser = Lexer("{}")
 
     # When I run the lexer
     parser.run()
 
     # Then we see we found both the text and the EOF token
     parser.tokens.should.equal([
-        lexer.TOKEN_KEY("some text"),
+        lexer.TOKEN_OBJECT_START("{"),
+        lexer.TOKEN_OBJECT_END("}"),
         lexer.TOKEN_EOF(""),
     ])
+
+
+
+# def test_lex_text():
+#     "Lexer.run() should parse an dummy string"
+
+#     # Given a lexer that takes some text as input string
+#     parser = Lexer("some text")
+
+#     # When I run the lexer
+#     parser.run()
+
+#     # Then we see we found both the text and the EOF token
+#     parser.tokens.should.equal([
+#         lexer.TOKEN_KEY("some text"),
+#         lexer.TOKEN_EOF(""),
+#     ])
 
 
 def test_lex_obj():

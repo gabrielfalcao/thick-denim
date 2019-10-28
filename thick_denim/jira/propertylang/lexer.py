@@ -48,6 +48,8 @@ class Lexer(BaseParser):
 
     def emit(self, token, strip=False):
         value = self.value()
+        print(f'emit({token}) = {value!r}')
+
         if strip:
             value = value.strip()
         self.tokens.append(token(value))
@@ -64,52 +66,65 @@ class Lexer(BaseParser):
         return self.tokens
 
     def lex_obj(self):
+        TOKEN_TEXT = TOKEN_KEY
+        within_quotes = None
         while True:
             cursor = self.proceed()
+            value = self.value()
             if cursor is None:  # EOF
                 break
             elif cursor == "{":
-                self.emit_s(TOKEN_OBJECT_START)
-                self.proceed()
-            elif cursor in ('"', "'"):
-                self.reset()
-                self.lex_value()
-                continue
-
+                self.emit(TOKEN_OBJECT_START)
+                TOKEN_TEXT = TOKEN_KEY
             elif cursor == "}":
-                self.retreat()
-                self.emit_s(TOKEN_VALUE)
-                self.proceed()
-                self.emit_s(TOKEN_OBJECT_END)
+                if value != cursor:
+                    self.retreat()
+                    self.emit_s(TOKEN_TEXT)
+                    self.proceed()
+                self.emit(TOKEN_OBJECT_END)
+                continue
             elif cursor in ("=", ":"):
+                if within_quotes:
+                    continue
                 self.retreat()
-                self.emit_s(TOKEN_KEY)
+                if TOKEN_TEXT == TOKEN_KEY:
+                    self.emit(TOKEN_KEY)
+                    TOKEN_TEXT = TOKEN_VALUE
+                else:
+                    self.emit(TOKEN_VALUE)
+                    TOKEN_TEXT = TOKEN_KEY
+
                 self.proceed()
                 self.reset()
+
+            elif cursor in ('"', "'"):
+                if not within_quotes:
+                    within_quotes = cursor
+                    self.reset()
+                elif within_quotes != cursor:
+                    continue
+                else:
+                    self.retreat()
+                    self.emit_s(TOKEN_TEXT)
+                    self.proceed()
+                    self.reset()
+                    within_quotes = None
+
             elif cursor == ",":
-                self.retreat()
-                self.emit_s(TOKEN_VALUE)
-                self.proceed()
+                if value != cursor:
+                    self.retreat()
+                    self.emit_s(TOKEN_TEXT)
+                    self.proceed()
                 if self.peek() == ' ':
                     self.proceed()
                 self.emit_s(TOKEN_SEPARATOR)
+                if TOKEN_TEXT == TOKEN_KEY:
+                    TOKEN_TEXT = TOKEN_VALUE
+                else:
+                    TOKEN_TEXT = TOKEN_KEY
 
-        self.emit_s(TOKEN_KEY)
+        self.emit_s(TOKEN_TEXT)
         self.emit(TOKEN_EOF)
-        return None
-
-    def lex_value(self):
-        while True:
-            cursor = self.proceed()
-            if cursor is None:  # EOF
-                break
-            elif cursor == '"':
-                self.retreat()
-                self.emit_s(TOKEN_VALUE)
-                self.proceed()
-                self.reset()
-                break
-
         return None
 
 
