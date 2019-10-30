@@ -231,10 +231,10 @@ class JiraProject(Model):
 
 class JiraIssueChangelog(Model):
     __visible_atttributes__ = [
-        "summary",
-        "assignee_name",
+        "created",
+        "author_key",
         "assignee_key",
-        "key",
+        "id",
     ]
     __id_attributes__ = ["id"]
 
@@ -243,12 +243,28 @@ class JiraIssueChangelog(Model):
         return self.get("id")
 
     @property
+    def assignee(self):
+        return self.get("assignee") or {}
+
+    @property
+    def assignee_name(self):
+        return self.assignee.get("name")
+
+    @property
+    def assignee_key(self):
+        return self.assignee.get("key")
+
+    @property
     def author(self):
         return self.get("author") or {}
 
     @property
     def author_name(self):
         return self.author.get("name")
+
+    @property
+    def author_key(self):
+        return self.author.get("key")
 
     @property
     def created_at(self):

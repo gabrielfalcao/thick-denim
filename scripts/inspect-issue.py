@@ -12,6 +12,7 @@ def main(config: ThickDenimConfig, args):
     key = args[0]
     issue = client.get_issue(key)
     transitions = client.get_issue_transitions(issue)
+    changelogs = client.get_changelogs_from_issue(issue.key)
     import ipdb
 
     ipdb.set_trace()
